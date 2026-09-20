@@ -1,0 +1,941 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="13" skipped="1" tests="65" time="108.160" timestamp="2026-09-13T19:41:40.657502+02:00" hostname="DESKTZEN"><testcase classname="tests.test_reports_api" name="test_tickets_listado_con_total_y_numero_de_documento" time="2.928"><failure message="AssertionError: assert ('2026-09-13T17:41:44.579201Z' is None)">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0F8F8FC0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B0DC98980&gt;
+
+    def test_tickets_listado_con_total_y_numero_de_documento(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        _, p1, _ = _tax_and_products(client, h)
+        cash = _cash_session_id(client, h, terminal)
+    
+        order = _mk_order(client, h, terminal)
+        _add_line(client, h, order["id"], p1["id"], quantity="2")
+        _close_sale(client, h, order["id"], cash, [_pay(method, "2.20")])
+    
+        resp = _get(client, h, "tickets", _window())
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["total"] == 1 and len(body["items"]) == 1
+        ticket = body["items"][0]
+        assert ticket["order_id"] == order["id"]
+        assert ticket["terminal_id"] == terminal
+        assert ticket["doc_number"]  # extraído en SQL del payload congelado
+        assert ticket["series"] and ticket["number"] == 1
+        assert Decimal(ticket["total_amount"]) == Decimal("2.20")
+&gt;       assert ticket["printed_at"] is None and ticket["reprint_count"] == 0
+E       AssertionError: assert ('2026-09-13T17:41:44.579201Z' is None)
+
+tests\test_reports_api.py:274: AssertionError</failure></testcase><testcase classname="tests.test_reports_api" name="test_tickets_requiere_rango_acotado" time="1.551" /><testcase classname="tests.test_reports_api" name="test_informes_sin_permiso_403" time="1.266" /><testcase classname="tests.test_reports_api" name="test_facturas_listado_y_detalle" time="2.651" /><testcase classname="tests.test_reports_api" name="test_cierres_pasados_con_cuadre_congelado" time="2.110"><failure message="AssertionError: {&quot;type&quot;:&quot;urn:tpv:error:PERMISSION_DENIED&quot;,&quot;title&quot;:&quot;Forbidden&quot;,&quot;status&quot;:403,&quot;detail&quot;:&quot;Falta el permiso requerido: cash.close&quot;,&quot;code&quot;:&quot;PERMISSION_DENIED&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0F926E40&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B0FEA50F0&gt;
+
+    def test_cierres_pasados_con_cuadre_congelado(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        _, p1, _ = _tax_and_products(client, h)
+    
+        session = _open(client, h, terminal)  # fondo 50.00
+        order = _mk_order(client, h, terminal)
+        _add_line(client, h, order["id"], p1["id"], quantity="2")
+        _close_sale(client, h, order["id"], session["id"], [_pay(method, "2.20")])
+    
+        # Cierre Z contando 52.20 exacto → diferencia cero, congelada en la fila.
+        closed = client.post(f"{CASH}/sessions/{session['id']}/close", headers=h, json={
+            "lines": [{"denomination": "5000", "quantity": 1},
+                      {"denomination": "200", "quantity": 1},
+                      {"denomination": "20", "quantity": 1}],
+        })
+&gt;       assert closed.status_code == 200, closed.text
+E       AssertionError: {"type":"urn:tpv:error:PERMISSION_DENIED","title":"Forbidden","status":403,"detail":"Falta el permiso requerido: cash.close","code":"PERMISSION_DENIED"}
+E       assert 403 == 200
+E        +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code
+
+tests\test_reports_api.py:391: AssertionError</failure></testcase><testcase classname="tests.test_reports_api" name="test_resumen_del_periodo_con_desglose_de_iva" time="2.921"><failure message="AssertionError: assert Decimal('330') == Decimal('3.30')&#10; +  where Decimal('330') = Decimal('330')&#10; +  and   Decimal('3.30') = Decimal('3.30')">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0F926C60&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B0DB72210&gt;
+
+    def test_resumen_del_periodo_con_desglose_de_iva(db, client):
+        h = _headers(db, client)
+        _escenario_completo(db, client, h)
+    
+        resp = _get(client, h, "stats/summary", _window())
+        assert resp.status_code == 200, resp.text
+        s = resp.json()
+        assert s["sales_count"] == 2
+        assert Decimal(s["sales_amount"]) == Decimal("4.40")
+        assert s["refunds_count"] == 1
+        assert Decimal(s["refunds_amount"]) == Decimal("-1.10")
+        assert s["voided_count"] == 1
+&gt;       assert Decimal(s["net_amount"]) == Decimal("3.30")
+E       AssertionError: assert Decimal('330') == Decimal('3.30')
+E        +  where Decimal('330') = Decimal('330')
+E        +  and   Decimal('3.30') = Decimal('3.30')
+
+tests\test_reports_api.py:451: AssertionError</failure></testcase><testcase classname="tests.test_reports_api" name="test_estadistica_por_producto_netando_devoluciones" time="2.829" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_categoria_sin_categoria" time="2.939" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_camarero" time="3.055" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_forma_de_pago" time="2.979" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_periodo_por_dias_y_horas" time="3.160" /><testcase classname="tests.test_reports_api" name="test_paginacion_de_informes" time="3.252" /><testcase classname="tests.test_sales_api" name="test_ciclo_completo_de_venta" time="1.899"><failure message="AssertionError: assert ('8.18', '9.00') == ('8.10', '9.00')&#10;  &#10;  At index 0 diff: '8.18' != '8.10'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B101A46E0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B0FFA1260&gt;
+
+    def test_ciclo_completo_de_venta(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+        _, cafe = _tax_and_product(client, h)
+    
+        order = _mk_order(client, h, terminal)
+        assert order["status"] == "draft"
+        assert order["total_amount"] is None  # draft sin totales (ck_orders_draft_no_totals)
+    
+        # Línea de catálogo: snapshot 2 × 1.50 con IVA 21 % incluido.
+        line = _add_line(client, h, order["id"], {
+            "product_id": cafe["id"], "quantity": "2",
+        })
+        assert line["name"] == "Café solo"
+        assert line["unit_price"] == "1.50" and line["tax_rate"] == "21.00"
+        assert line["quantity"] == "2.000"
+        assert (line["base"], line["total"]) == ("2.48", "3.00")  # 3.00 / 1.21 = 2.4793… → 2.48
+    
+        # Artículo libre con descuento: 10.00 al 10 % → 9.00 (base 8.10 + 0.90 de 10 %).
+        free = _add_line(client, h, order["id"], {
+            "name": "Copa aparte", "unit_price": "10.00", "tax_rate": "10.00",
+            "quantity": "1", "discount_pct": "10.00",
+        })
+&gt;       assert (free["base"], free["total"]) == ("8.10", "9.00")
+E       AssertionError: assert ('8.18', '9.00') == ('8.10', '9.00')
+E         
+E         At index 0 diff: '8.18' != '8.10'
+E         Use -v to get more diff
+
+tests\test_sales_api.py:236: AssertionError</failure></testcase><testcase classname="tests.test_sales_api" name="test_guardas_de_cierre" time="1.160"><failure message="sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation &quot;cash_sessions&quot; violates check constraint &quot;ck_cash_sessions_order&quot;&#10;DETAIL:  Failing row contains (42fd2220-e916-4d52-8bba-e18990ebac1f, 26de1229-57ec-49aa-a9ff-7177a2f9cede, d68ffcd0-b8ca-463b-9515-f7678ce6ba6f, null, 50.00, 40.00, 40.00, 0.00, 2026-09-13 17:42:17.059813+00, 2026-09-13 17:42:17.059813+00).&#10;[SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id]&#10;[parameters: {'t': '26de1229-57ec-49aa-a9ff-7177a2f9cede', 'u': 'd68ffcd0-b8ca-463b-9515-f7678ce6ba6f'}]&#10;(Background on this error at: https://sqlalche.me/e/20/gkpj)">self = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0F9248C0&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x0000020B0DF6F230&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x0000020B0FD1B650&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x0000020B104F7750&gt;
+parameters = [{'t': '26de1229-57ec-49aa-a9ff-7177a2f9cede', 'u': 'd68ffcd0-b8ca-463b-9515-f7678ce6ba6f'}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x20b1062af90&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id'
+params = {'t': '26de1229-57ec-49aa-a9ff-7177a2f9cede', 'u': 'd68ffcd0-b8ca-463b-9515-f7678ce6ba6f'}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.CheckViolation: new row for relation "cash_sessions" violates check constraint "ck_cash_sessions_order"
+E           DETAIL:  Failing row contains (42fd2220-e916-4d52-8bba-e18990ebac1f, 26de1229-57ec-49aa-a9ff-7177a2f9cede, d68ffcd0-b8ca-463b-9515-f7678ce6ba6f, null, 50.00, 40.00, 40.00, 0.00, 2026-09-13 17:42:17.059813+00, 2026-09-13 17:42:17.059813+00).
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: CheckViolation
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0F9248C0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B10250270&gt;
+
+    def test_guardas_de_cierre(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        other_terminal = _mk_terminal(db, code="T2")
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+&gt;       closed_cash = _mk_cash_session(db, terminal, str(user_id), closed=True)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_sales_api.py:306: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_sales_api.py:124: in _mk_cash_session
+    return str(db.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x20b1062af90&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id'
+params = {'t': '26de1229-57ec-49aa-a9ff-7177a2f9cede', 'u': 'd68ffcd0-b8ca-463b-9515-f7678ce6ba6f'}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation "cash_sessions" violates check constraint "ck_cash_sessions_order"
+E           DETAIL:  Failing row contains (42fd2220-e916-4d52-8bba-e18990ebac1f, 26de1229-57ec-49aa-a9ff-7177a2f9cede, d68ffcd0-b8ca-463b-9515-f7678ce6ba6f, null, 50.00, 40.00, 40.00, 0.00, 2026-09-13 17:42:17.059813+00, 2026-09-13 17:42:17.059813+00).
+E           [SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id]
+E           [parameters: {'t': '26de1229-57ec-49aa-a9ff-7177a2f9cede', 'u': 'd68ffcd0-b8ca-463b-9515-f7678ce6ba6f'}]
+E           (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: IntegrityError</failure></testcase><testcase classname="tests.test_sales_api" name="test_anular_borrador_y_borrador_cobrado" time="2.312"><failure message="AssertionError: assert ['sale_voided...'sale_voided'] == ['sale_closed', 'sale_voided']&#10;  &#10;  At index 0 diff: 'sale_voided' != 'sale_closed'&#10;  Left contains one more item: 'sale_voided'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B101A64E0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B1061B130&gt;
+
+    def test_anular_borrador_y_borrador_cobrado(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+        _, cafe = _tax_and_product(client, h)
+    
+        draft = _mk_order(client, h, terminal)
+        _add_line(client, h, draft["id"], {"product_id": cafe["id"], "quantity": "1"})
+    
+        voided = client.post(f"{SALES}/orders/{draft['id']}/void", headers=h,
+                             json={"reason": "Cliente se fue"})
+        assert voided.status_code == 200
+        body = voided.json()
+        assert body["status"] == "voided" and body["void_reason"] == "Cliente se fue"
+        assert body["total_amount"] is None  # el draft nunca tuvo totales
+        assert body["voided_at"] is not None
+    
+        again = client.post(f"{SALES}/orders/{draft['id']}/void", headers=h,
+                            json={"reason": "Otra vez"})
+        assert again.status_code == 409 and again.json()["code"] == "CONFLICT"
+    
+        # Un cobrado también se anula, conservando sus totales (nunca se borra).
+        paid = _mk_order(client, h, terminal)
+        _add_line(client, h, paid["id"], {"product_id": cafe["id"], "quantity": "2"})
+        _close(client, h, paid["id"], cash, [_pay(cash_method, "3.00")])
+        voided_paid = client.post(f"{SALES}/orders/{paid['id']}/void", headers=h,
+                                  json={"reason": "Error de caja"}).json()
+        assert voided_paid["status"] == "voided"
+        assert voided_paid["total_amount"] == "3.00"  # totales conservados
+    
+        event_types = [t for t, _ in _sale_events(db)]
+&gt;       assert event_types == ["sale_closed", "sale_voided"]
+E       AssertionError: assert ['sale_voided...'sale_voided'] == ['sale_closed', 'sale_voided']
+E         
+E         At index 0 diff: 'sale_voided' != 'sale_closed'
+E         Left contains one more item: 'sale_voided'
+E         Use -v to get more diff
+
+tests\test_sales_api.py:389: AssertionError</failure></testcase><testcase classname="tests.test_sales_api" name="test_devolucion" time="2.456" /><testcase classname="tests.test_sales_api" name="test_descuento_requiere_permiso" time="2.443" /><testcase classname="tests.test_sales_api" name="test_una_comanda_abierta_por_mesa" time="2.131" /><testcase classname="tests.test_sales_api" name="test_permisos_de_venta" time="2.067" /><testcase classname="tests.test_admin_api" name="test_camarero_sin_acceso_al_panel" time="1.296"><failure message="AssertionError: assert 'Forbidden' == 'PERMISSION_DENIED'&#10;  &#10;  - PERMISSION_DENIED&#10;  + Forbidden">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B1039C9B0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B1061B790&gt;
+
+    def test_camarero_sin_acceso_al_panel(db, client):
+        h = _headers(db, client, WAITER_PERMS, "camarero")
+        for path in ("/users", "/roles", "/terminals", "/devices", "/audit", "/backups"):
+            resp = client.get(f"{A}{path}", headers=h)
+            assert resp.status_code == 403, (path, resp.status_code)
+&gt;           assert resp.json()["title"] == "PERMISSION_DENIED"
+E           AssertionError: assert 'Forbidden' == 'PERMISSION_DENIED'
+E             
+E             - PERMISSION_DENIED
+E             + Forbidden
+
+tests\test_admin_api.py:128: AssertionError</failure></testcase><testcase classname="tests.test_admin_api" name="test_crear_y_listar_usuarios" time="1.692" /><testcase classname="tests.test_admin_api" name="test_username_duplicado_y_rol_desconocido" time="1.390" /><testcase classname="tests.test_admin_api" name="test_password_corta_rechazada" time="1.417" /><testcase classname="tests.test_admin_api" name="test_patch_usuario_cambia_nombre_y_rol" time="1.603" /><testcase classname="tests.test_admin_api" name="test_nadie_se_desactiva_a_si_mismo" time="1.421" /><testcase classname="tests.test_admin_api" name="test_reset_de_password_revoca_las_sesiones" time="2.270" /><testcase classname="tests.test_admin_api" name="test_pin_alta_retirada_y_validacion" time="2.168" /><testcase classname="tests.test_admin_api" name="test_listado_excluye_inactivos_salvo_include" time="1.771" /><testcase classname="tests.test_admin_api" name="test_roles_crear_duplicado_y_codigo_invalido" time="1.514" /><testcase classname="tests.test_admin_api" name="test_matriz_reemplazo_y_permisos_desconocidos" time="1.641" /><testcase classname="tests.test_admin_api" name="test_la_matriz_de_admin_es_intocable" time="1.388"><failure message="StopIteration">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0AA2D310&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B0FFA0C00&gt;
+
+    def test_la_matriz_de_admin_es_intocable(db, client):
+        h = _headers(db, client)
+        roles = client.get(f"{A}/roles", headers=h).json()["items"]
+&gt;       admin_role = next(r for r in roles if r["code"] == "admin")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       StopIteration
+
+tests\test_admin_api.py:300: StopIteration</failure></testcase><testcase classname="tests.test_admin_api" name="test_catalogo_de_permisos_incluye_los_nuevos" time="1.324"><failure message="AssertionError: assert {'admin.audit... 'sales.void'} &lt;= {'admin.audit...iscount', ...}&#10;  &#10;  Extra items in the left set:&#10;  'sales.void'">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0FA6C050&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B10BCFAC0&gt;
+
+    def test_catalogo_de_permisos_incluye_los_nuevos(db, client):
+        h = _headers(db, client)
+        codes = {p["code"] for p in client.get(f"{A}/permissions", headers=h).json()["items"]}
+&gt;       assert {"sales.sell", "sales.void", "admin.roles", "admin.audit",
+                "admin.backups"} &lt;= codes
+E       AssertionError: assert {'admin.audit... 'sales.void'} &lt;= {'admin.audit...iscount', ...}
+E         
+E         Extra items in the left set:
+E         'sales.void'
+
+tests\test_admin_api.py:316: AssertionError</failure></testcase><testcase classname="tests.test_admin_api" name="test_terminales_crud_y_baja_logica" time="1.822" /><testcase classname="tests.test_admin_api" name="test_alta_y_rotacion_entregan_token_una_vez" time="1.476" /><testcase classname="tests.test_admin_api" name="test_dispositivo_con_terminal_valida_estado" time="1.949" /><testcase classname="tests.test_admin_api" name="test_auditoria_filtro_por_prefijo_y_pagina" time="1.815" /><testcase classname="tests.test_admin_api" name="test_listado_vacio_y_503_sin_pg_dump" time="1.400"><failure message="AssertionError: assert 'Service Unavailable' == 'BACKUP_UNAVAILABLE'&#10;  &#10;  - BACKUP_UNAVAILABLE&#10;  + Service Unavailable">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0F97DB80&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B10D3CD10&gt;
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x0000020B0F8F9A70&gt;
+
+    def test_listado_vacio_y_503_sin_pg_dump(db, client, monkeypatch):
+        h = _headers(db, client)
+        assert client.get(f"{A}/backups", headers=h).json() == {"items": []}
+    
+        monkeypatch.setattr(backups_service, "find_pg_dump", lambda: None)
+        resp = client.post(f"{A}/backups/run", headers=h)
+        assert resp.status_code == 503
+&gt;       assert resp.json()["title"] == "BACKUP_UNAVAILABLE"
+E       AssertionError: assert 'Service Unavailable' == 'BACKUP_UNAVAILABLE'
+E         
+E         - BACKUP_UNAVAILABLE
+E         + Service Unavailable
+
+tests\test_admin_api.py:433: AssertionError</failure></testcase><testcase classname="tests.test_admin_api" name="test_backup_completo_cuando_hay_pg_dump" time="0.818"><skipped type="pytest.skip" message="pg_dump no disponible en esta máquina">E:\Proyectos\TPV\estructura_data\backend\tests\test_admin_api.py:440: pg_dump no disponible en esta máquina</skipped></testcase><testcase classname="tests.test_ws_api" name="test_sin_auth_o_token_invalido_cierra_4401" time="1.292" /><testcase classname="tests.test_ws_api" name="test_sesion_revocada_cierra_4401" time="1.490" /><testcase classname="tests.test_ws_api" name="test_primer_frame_sin_auth_cierra_4400" time="0.017" /><testcase classname="tests.test_ws_api" name="test_suscripcion_recibe_los_eventos_de_venta_en_vivo" time="2.177" /><testcase classname="tests.test_ws_api" name="test_frame_desconocido_responde_error_y_la_conexion_sigue" time="2.485" /><testcase classname="tests.test_ws_api" name="test_unsubscribe_deja_de_entregar" time="2.514" /><testcase classname="tests.test_ws_api" name="test_temas_sin_permiso_van_a_denied_y_el_resto_funciona" time="1.435" /><testcase classname="tests.test_ws_api" name="test_system_esta_abierto_a_cualquier_autenticado" time="1.398" /><testcase classname="tests.test_ws_api" name="test_replay_desde_since_id_y_continuidad_del_cursor" time="2.431"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0FA6F3E0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000020B112EB790&gt;
+
+    def test_replay_desde_since_id_y_continuidad_del_cursor(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        token = _login(client).json()["access_token"]
+    
+        order, _, _ = _sale(client, h, terminal, method)  # created + updated + closed
+    
+        with _connect(client, token) as ws:
+            ws.send_json({"type": "subscribe", "topics": ["sales"], "since_id": 0})
+            # Llegan primero los eventos históricos y al final el ``subscribed``.
+            replayed = []
+            while True:
+                frame = ws.receive_json()
+                if frame["type"] == "subscribed":
+                    summary = frame
+                    break
+                assert frame["type"] == "event"
+                replayed.append(frame["event"])
+    
+            assert [ev["type"] for ev in replayed] == [
+                "sales.created", "sales.updated", "sales.closed",
+            ]
+            assert all(ev["payload"]["order_id"] == order["id"] for ev in replayed)
+            assert summary["topics"] == ["sales"] and summary["denied"] == []
+            assert summary["replayed"] == 3
+            assert summary["cursor"] == replayed[-1]["id"]
+    
+            # El cursor queda a la altura del log: lo nuevo llega en vivo, sin hueco.
+&gt;           order2, _, _ = _sale(client, h, terminal, method)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_ws_api.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_ws_api.py:195: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x0000020B112EB790&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZTI2MWIzNC0yOGE3LTRiMjctOGFlMS0yMTU5ODAzZTB...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMjEzOTMsImV4cCI6MTc4OTMyMjI5M30.45iKhttfKaIqEcVoMo20yoqRCYYWduedhH-Ae4MvFeo'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{V1}/catalog/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{V1}/catalog/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_ws_api.py:144: KeyError</failure></testcase><testcase classname="tests.test_integrity" name="test_fk_violation_order_bad_terminal" time="0.799" /><testcase classname="tests.test_integrity" name="test_soft_deleted_product_keeps_fk" time="0.813" /><testcase classname="tests.test_integrity" name="test_tickets_unique_per_terminal" time="0.801" /><testcase classname="tests.test_integrity" name="test_document_sequence_concurrent_for_update" time="0.839" /><testcase classname="tests.test_integrity" name="test_one_open_cash_session_per_terminal" time="0.755" /><testcase classname="tests.test_integrity" name="test_cash_session_close_requires_counts" time="0.785" /><testcase classname="tests.test_integrity" name="test_paid_order_requires_cash_session_and_totals" time="0.760" /><testcase classname="tests.test_integrity" name="test_order_line_snapshots_not_null" time="0.747" /><testcase classname="tests.test_integrity" name="test_order_line_discount_bounds" time="0.733" /><testcase classname="tests.test_integrity" name="test_order_line_quantity_not_zero" time="0.777" /><testcase classname="tests.test_integrity" name="test_one_draft_per_dining_table" time="0.777" /><testcase classname="tests.test_integrity" name="test_updated_at_trigger_fires" time="0.750" /><testcase classname="tests.test_integrity" name="test_idempotency_key_dedup" time="0.717" /><testcase classname="tests.test_integrity" name="test_event_log_ids_monotonic" time="0.743" /><testcase classname="tests.test_integrity" name="test_invoice_series_unique" time="0.717" /><testcase classname="tests.test_integrity" name="test_refund_validation" time="0.718"><failure message="sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation &quot;orders&quot; violates check constraint &quot;ck_orders_paid_complete&quot;&#10;DETAIL:  Failing row contains (3e6ee18f-04e9-4d77-aeae-9496e883a95d, b673521b-2859-40da-9429-e7666428ca2f, 269bd5ea-4b1a-466e-838f-ec1b7113daa1, null, null, null, paid, bar, null, null, 10.00, 2.10, 12.10, null, 2026-09-13 17:43:26.711379+00, null, null, null, 2026-09-13 17:43:26.711379+00).&#10;[SQL: INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id]&#10;[parameters: {'t': UUID('b673521b-2859-40da-9429-e7666428ca2f'), 'u': UUID('269bd5ea-4b1a-466e-838f-ec1b7113daa1'), 'cs': None, 'dt': None, 's': 'paid', 'ot': 'bar'}]&#10;(Background on this error at: https://sqlalche.me/e/20/gkpj)">self = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B108ECC80&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x0000020B0DF6F230&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x0000020B10978B50&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x0000020B10FD3250&gt;
+parameters = [{'t': UUID('b673521b-2859-40da-9429-e7666428ca2f'), 'u': UUID('269bd5ea-4b1a-466e-838f-ec1b7113daa1'), 'cs': None, 'dt': None, ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x20b10fdd850&gt;
+query = 'INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id'
+params = {'t': UUID('b673521b-2859-40da-9429-e7666428ca2f'), 'u': UUID('269bd5ea-4b1a-466e-838f-ec1b7113daa1'), 'cs': None, 'dt': None, ...}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.CheckViolation: new row for relation "orders" violates check constraint "ck_orders_paid_complete"
+E           DETAIL:  Failing row contains (3e6ee18f-04e9-4d77-aeae-9496e883a95d, b673521b-2859-40da-9429-e7666428ca2f, 269bd5ea-4b1a-466e-838f-ec1b7113daa1, null, null, null, paid, bar, null, null, 10.00, 2.10, 12.10, null, 2026-09-13 17:43:26.711379+00, null, null, null, 2026-09-13 17:43:26.711379+00).
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: CheckViolation
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B108ECC80&gt;
+
+    def test_refund_validation(db):
+        t, u = new_terminal(db), new_user(db, new_role(db))
+&gt;       original = new_order(db, t, u, status="paid")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_integrity.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\conftest.py:154: in new_order
+    return _insert(conn, sql.format(extra=extra, extra_vals=extra_vals), **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\conftest.py:77: in _insert
+    return conn.execute(text(sql), params).scalar_one()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x20b10fdd850&gt;
+query = 'INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id'
+params = {'t': UUID('b673521b-2859-40da-9429-e7666428ca2f'), 'u': UUID('269bd5ea-4b1a-466e-838f-ec1b7113daa1'), 'cs': None, 'dt': None, ...}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation "orders" violates check constraint "ck_orders_paid_complete"
+E           DETAIL:  Failing row contains (3e6ee18f-04e9-4d77-aeae-9496e883a95d, b673521b-2859-40da-9429-e7666428ca2f, 269bd5ea-4b1a-466e-838f-ec1b7113daa1, null, null, null, paid, bar, null, null, 10.00, 2.10, 12.10, null, 2026-09-13 17:43:26.711379+00, null, null, null, 2026-09-13 17:43:26.711379+00).
+E           [SQL: INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id]
+E           [parameters: {'t': UUID('b673521b-2859-40da-9429-e7666428ca2f'), 'u': UUID('269bd5ea-4b1a-466e-838f-ec1b7113daa1'), 'cs': None, 'dt': None, 's': 'paid', 'ot': 'bar'}]
+E           (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: IntegrityError</failure></testcase><testcase classname="tests.test_integrity" name="test_print_job_dedupe_key" time="0.744" /><testcase classname="tests.test_integrity" name="test_seed_sql_applies_and_is_idempotent" time="0.748"><failure message="sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near &quot;el&quot;&#10;LINE 1: el instalador los ajusta)&#10;        ^&#10;[SQL: el instalador los ajusta)&#10;-- -----------------------------------------------------------------------------&#10;INSERT INTO parameters (key, value, description) VALUES&#10;    ('tickets.series',        '&quot;A&quot;',      'Serie de numeración de tickets por defecto'),&#10;    ('invoices.series',       '&quot;FAC&quot;',    'Serie de numeración de facturas'),&#10;    ('currency.decimals',     '2',        'Decimales de redondeo del importe'),&#10;    ('restaurant.enabled',    'false',    'Habilita el módulo de restaurante (mesas/URY-style)'),&#10;    ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')&#10;ON CONFLICT (key) DO NOTHING]&#10;(Background on this error at: https://sqlalche.me/e/20/f405)">self = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0FA6C230&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x0000020B0DF6F230&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x0000020B1085AC50&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x0000020B110A3B10&gt;
+parameters = [{}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x20b1026af90&gt;
+query = "el instalador los ajusta)\n-- -----------------------------------------------------------------------------\nINSERT I...    ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')\nON CONFLICT (key) DO NOTHING"
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at or near "el"
+E           LINE 1: el instalador los ajusta)
+E                   ^
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: SyntaxError
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x0000020B0FA6C230&gt;
+
+    def test_seed_sql_applies_and_is_idempotent(db):
+        script = DOCS_SEED_SQL.read_text(encoding="utf-8")
+        statements = [s.strip() for s in script.split(";") if s.strip()]
+        for _ in range(2):  # aplicarla dos veces no duplica nada
+            for stmt in statements:
+&gt;               db.execute(text(stmt))
+
+tests\test_integrity.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x20b1026af90&gt;
+query = "el instalador los ajusta)\n-- -----------------------------------------------------------------------------\nINSERT I...    ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')\nON CONFLICT (key) DO NOTHING"
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near "el"
+E           LINE 1: el instalador los ajusta)
+E                   ^
+E           [SQL: el instalador los ajusta)
+E           -- -----------------------------------------------------------------------------
+E           INSERT INTO parameters (key, value, description) VALUES
+E               ('tickets.series',        '"A"',      'Serie de numeración de tickets por defecto'),
+E               ('invoices.series',       '"FAC"',    'Serie de numeración de facturas'),
+E               ('currency.decimals',     '2',        'Decimales de redondeo del importe'),
+E               ('restaurant.enabled',    'false',    'Habilita el módulo de restaurante (mesas/URY-style)'),
+E               ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')
+E           ON CONFLICT (key) DO NOTHING]
+E           (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: ProgrammingError</failure></testcase></testsuite></testsuites>

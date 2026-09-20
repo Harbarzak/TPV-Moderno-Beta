@@ -1,0 +1,22 @@
+# Contexto de build del kit Docker (deploy/docker/Dockerfile): al demonio solo
+# viaja el código fuente — ni generados, ni secretos, ni datos de negocio.
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.pytest-out
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/*.dump
+backend/data
+backend/backups
+backups
+deploy/docker/backups
+memory.md
+PROJECT_STATE.md
+ARCHITECTURE.md

@@ -1,0 +1,13 @@
+npm notice run tpv-admin@0.1.0 test
+npm notice run vitest run
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mE:/Proyectos/TPV/estructura_data/frontend/admin[39m
+
+ [32m✓[39m src/lib/permissions.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [32m✓[39m src/lib/domain.test.ts [2m([22m[2m12 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m17 passed[39m[22m[90m (17)[39m
+[2m   Start at [22m 21:24:49
+[2m   Duration [22m 1.83s[2m (transform 106ms, setup 0ms, collect 149ms, tests 28ms, environment 1.50s, prepare 1.03s)[22m
+

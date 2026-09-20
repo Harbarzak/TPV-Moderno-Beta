@@ -1,0 +1,122 @@
+..F.F....                                                                [100%]
+================================== FAILURES ===================================
+______________________ test_crud_panel_orden_y_auditoria ______________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x00000204F0C26990>
+client = <starlette.testclient.TestClient object at 0x00000204F0F03390>
+
+    def test_crud_panel_orden_y_auditoria(db, client):
+        h = _admin_headers(db, client)
+        assert _tree(client, h)["panels"] == []
+    
+        panel = _mk_panel(client, h, name="Cafetería", sort_order=1)
+        assert panel["name"] == "Cafetería" and panel["active"] is True
+    
+        patched = client.patch(f"{CAT}/panels/{panel['id']}", headers=h,
+                               json={"name": "Barras", "sort_order": 2})
+        assert patched.status_code == 200
+        assert patched.json() == {**panel, "name": "Barras", "sort_order": 2}
+    
+        other = _mk_panel(client, h, name="Vinos", sort_order=1)
+        reordered = client.post(f"{CAT}/panels/reorder", headers=h, json={"items": [
+            {"id": other["id"], "sort_order": 0}, {"id": panel["id"], "sort_order": 1},
+        ]})
+        assert reordered.status_code == 200
+        assert [p["name"] for p in reordered.json()["panels"]] == ["Vinos", "Barras"]
+    
+        missing = client.post(f"{CAT}/panels/reorder", headers=h, json={"items": [
+            {"id": str(uuid4()), "sort_order": 0},
+        ]})
+        assert missing.status_code == 404
+        assert missing.json()["code"] == "NOT_FOUND"
+    
+        deleted = client.delete(f"{CAT}/panels/{panel['id']}", headers=h)
+        assert deleted.status_code == 200 and deleted.json()["active"] is False
+        assert [p["name"] for p in _tree(client, h)["panels"]] == ["Vinos"]  # baja = fuera del árbol
+    
+>       assert _catalog_actions(db) == [
+            "catalog.panel_created", "catalog.panel_updated",
+            "catalog.panels_reordered", "catalog.panel_deleted",
+        ]
+E       AssertionError: assert ['catalog.pan...anel_deleted'] == ['catalog.pan...anel_deleted']
+E         
+E         At index 2 diff: 'catalog.panel_created' != 'catalog.panels_reordered'
+E         Left contains one more item: 'catalog.panel_deleted'
+E         Use -v to get more diff
+
+tests\test_panels_api.py:176: AssertionError
+____________________ test_rejilla_put_snapshot_y_reemplazo ____________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x00000204F0DF33E0>
+client = <starlette.testclient.TestClient object at 0x00000204F0F2D810>
+
+    def test_rejilla_put_snapshot_y_reemplazo(db, client):
+        h = _admin_headers(db, client)
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        cafe = _mk_product(client, h, tax["id"], name="Café solo", price="1.50")
+        te = _mk_product(client, h, tax["id"], name="Té verde", price="2.10", short_name="Té")
+    
+        panel = _mk_panel(client, h)
+        sub = _mk_subpanel(client, h, panel["id"], name="Calientes")
+    
+        resp = _put_grid(client, h, panel["id"], [
+            {"product_id": cafe["id"], "grid_row": 0, "grid_col": 1,
+             "label": "Solo", "color": "#8b4513"},
+            {"product_id": te["id"], "subpanel_id": sub["id"], "grid_row": 1, "grid_col": 0},
+        ])
+        assert resp.status_code == 200, resp.text
+        tree_panel = resp.json()["panels"][0]
+    
+        # Botón directo del panel: posición, alternativa y producto embebido.
+        assert len(tree_panel["items"]) == 1
+        direct = tree_panel["items"][0]
+        assert (direct["grid_row"], direct["grid_col"]) == (0, 1)
+        assert direct["label"] == "Solo" and direct["color"] == "#8b4513"
+        assert direct["product"]["id"] == cafe["id"]
+        assert direct["product"]["price"] == "1.50"  # dinero string en el snapshot (§3)
+        assert direct["product"]["tax_code"] == "general"
+        assert direct["product"]["tax_rate"] == "21.00"
+        assert direct["product"]["weighable"] is False
+    
+        # Botón dentro del subpanel.
+        assert len(tree_panel["subpanels"][0]["items"]) == 1
+        assert tree_panel["subpanels"][0]["items"][0]["product"]["name"] == "Té verde"
+    
+        # Un segundo PUT reemplaza TODO el diseño: quita el del subpanel y mueve el otro.
+        resp2 = _put_grid(client, h, panel["id"], [
+            {"product_id": cafe["id"], "grid_row": 2, "grid_col": 2},
+            {"product_id": te["id"], "grid_row": 0, "grid_col": 0},
+        ])
+        assert resp2.status_code == 200
+        tree2 = resp2.json()["panels"][0]
+        assert len(tree2["items"]) == 2
+>       assert tree2["subpanels"][0]["items"] == []
+E       AssertionError: assert [{'id': '5b81...row': 1, ...}] == []
+E         
+E         Left contains one more item: {'id': '5b81dd40-74fb-4fa6-9b52-1e7df8bc9c2f', 'label': None, 'color': None, 'grid_row': 1, ...}
+E         Use -v to get more diff
+
+tests\test_panels_api.py:267: AssertionError
+============================== warnings summary ===============================
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.WindowsSelectorEventLoopPolicy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.set_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv\Lib\site-packages\starlette\testclient.py:53
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_panels_api.py::test_crud_panel_orden_y_auditoria - Assertio...
+FAILED tests/test_panels_api.py::test_rejilla_put_snapshot_y_reemplazo - Asse...

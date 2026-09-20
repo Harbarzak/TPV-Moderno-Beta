@@ -1,0 +1,25 @@
+# Secretos y entornos (ADR-008): nunca entran en el repositorio
+.env
+.env.*
+!.env.example
+
+# Volumen de datos locales del servidor (logos, colas, archivos)
+backend/data/
+
+# Copias de seguridad locales (datos de negocio, ADR-008)
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node (mostrador y móvil)
+node_modules/
+dist/
+*.local

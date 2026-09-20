@@ -1,0 +1,2800 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="38" skipped="1" tests="425" time="266.873" timestamp="2026-09-13T18:57:05.391718+02:00" hostname="DESKTZEN"><testcase classname="tests.test_admin_api" name="test_camarero_sin_acceso_al_panel" time="1.856"><failure message="AssertionError: assert 'Forbidden' == 'PERMISSION_DENIED'&#10;  &#10;  - PERMISSION_DENIED&#10;  + Forbidden">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C68562C0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6836120&gt;
+
+    def test_camarero_sin_acceso_al_panel(db, client):
+        h = _headers(db, client, WAITER_PERMS, "camarero")
+        for path in ("/users", "/roles", "/terminals", "/devices", "/audit", "/backups"):
+            resp = client.get(f"{A}{path}", headers=h)
+            assert resp.status_code == 403, (path, resp.status_code)
+&gt;           assert resp.json()["title"] == "PERMISSION_DENIED"
+E           AssertionError: assert 'Forbidden' == 'PERMISSION_DENIED'
+E             
+E             - PERMISSION_DENIED
+E             + Forbidden
+
+tests\test_admin_api.py:128: AssertionError</failure></testcase><testcase classname="tests.test_admin_api" name="test_crear_y_listar_usuarios" time="1.688" /><testcase classname="tests.test_admin_api" name="test_username_duplicado_y_rol_desconocido" time="1.390" /><testcase classname="tests.test_admin_api" name="test_password_corta_rechazada" time="1.329" /><testcase classname="tests.test_admin_api" name="test_patch_usuario_cambia_nombre_y_rol" time="1.639" /><testcase classname="tests.test_admin_api" name="test_nadie_se_desactiva_a_si_mismo" time="1.368" /><testcase classname="tests.test_admin_api" name="test_reset_de_password_revoca_las_sesiones" time="2.189" /><testcase classname="tests.test_admin_api" name="test_pin_alta_retirada_y_validacion" time="1.991" /><testcase classname="tests.test_admin_api" name="test_listado_excluye_inactivos_salvo_include" time="1.653" /><testcase classname="tests.test_admin_api" name="test_roles_crear_duplicado_y_codigo_invalido" time="1.433" /><testcase classname="tests.test_admin_api" name="test_matriz_reemplazo_y_permisos_desconocidos" time="1.663" /><testcase classname="tests.test_admin_api" name="test_la_matriz_de_admin_es_intocable" time="1.321"><failure message="StopIteration">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6897D40&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6C6B130&gt;
+
+    def test_la_matriz_de_admin_es_intocable(db, client):
+        h = _headers(db, client)
+        roles = client.get(f"{A}/roles", headers=h).json()["items"]
+&gt;       admin_role = next(r for r in roles if r["code"] == "admin")
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       StopIteration
+
+tests\test_admin_api.py:300: StopIteration</failure></testcase><testcase classname="tests.test_admin_api" name="test_catalogo_de_permisos_incluye_los_nuevos" time="1.325"><failure message="AssertionError: assert {'admin.audit... 'sales.void'} &lt;= {'admin.audit...iscount', ...}&#10;  &#10;  Extra items in the left set:&#10;  'sales.void'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D9A8A0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6DC1F20&gt;
+
+    def test_catalogo_de_permisos_incluye_los_nuevos(db, client):
+        h = _headers(db, client)
+        codes = {p["code"] for p in client.get(f"{A}/permissions", headers=h).json()["items"]}
+&gt;       assert {"sales.sell", "sales.void", "admin.roles", "admin.audit",
+                "admin.backups"} &lt;= codes
+E       AssertionError: assert {'admin.audit... 'sales.void'} &lt;= {'admin.audit...iscount', ...}
+E         
+E         Extra items in the left set:
+E         'sales.void'
+
+tests\test_admin_api.py:316: AssertionError</failure></testcase><testcase classname="tests.test_admin_api" name="test_terminales_crud_y_baja_logica" time="1.848" /><testcase classname="tests.test_admin_api" name="test_alta_y_rotacion_entregan_token_una_vez" time="1.557" /><testcase classname="tests.test_admin_api" name="test_dispositivo_con_terminal_valida_estado" time="2.075" /><testcase classname="tests.test_admin_api" name="test_auditoria_filtro_por_prefijo_y_pagina" time="1.837" /><testcase classname="tests.test_admin_api" name="test_listado_vacio_y_503_sin_pg_dump" time="1.408"><failure message="AssertionError: assert 'Service Unavailable' == 'BACKUP_UNAVAILABLE'&#10;  &#10;  - BACKUP_UNAVAILABLE&#10;  + Service Unavailable">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D48D70&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6C68AF0&gt;
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x00000177C4798770&gt;
+
+    def test_listado_vacio_y_503_sin_pg_dump(db, client, monkeypatch):
+        h = _headers(db, client)
+        assert client.get(f"{A}/backups", headers=h).json() == {"items": []}
+    
+        monkeypatch.setattr(backups_service, "find_pg_dump", lambda: None)
+        resp = client.post(f"{A}/backups/run", headers=h)
+        assert resp.status_code == 503
+&gt;       assert resp.json()["title"] == "BACKUP_UNAVAILABLE"
+E       AssertionError: assert 'Service Unavailable' == 'BACKUP_UNAVAILABLE'
+E         
+E         - BACKUP_UNAVAILABLE
+E         + Service Unavailable
+
+tests\test_admin_api.py:433: AssertionError</failure></testcase><testcase classname="tests.test_admin_api" name="test_backup_completo_cuando_hay_pg_dump" time="0.796"><skipped type="pytest.skip" message="pg_dump no disponible en esta máquina">E:\Proyectos\TPV\estructura_data\backend\tests\test_admin_api.py:440: pg_dump no disponible en esta máquina</skipped></testcase><testcase classname="tests.test_admin_schemas" name="test_usuario_valido_sin_pin" time="0.002" /><testcase classname="tests.test_admin_schemas" name="test_username_limites_del_check_de_bd" time="0.002" /><testcase classname="tests.test_admin_schemas" name="test_password_minimo_ocho" time="0.002" /><testcase classname="tests.test_admin_schemas" name="test_pin_formato_cuatro_a_seis_digitos" time="0.002" /><testcase classname="tests.test_admin_schemas" name="test_patch_de_usuario_solo_lo_enviado" time="0.002" /><testcase classname="tests.test_admin_schemas" name="test_pinset_null_es_clave_presente" time="0.001" /><testcase classname="tests.test_admin_schemas" name="test_codigo_de_rol_formato" time="0.001" /><testcase classname="tests.test_admin_schemas" name="test_matriz_de_permisos_acepta_vacia_y_rechaza_exceso" time="0.001" /><testcase classname="tests.test_admin_schemas" name="test_terminal_codigo_limites" time="0.001" /><testcase classname="tests.test_admin_schemas" name="test_kind_de_dispositivo_cerrado" time="0.001" /><testcase classname="tests.test_admin_schemas" name="test_patch_de_dispositivo_solo_lo_enviado" time="0.001" /><testcase classname="tests.test_api" name="test_healthz_ok" time="0.017" /><testcase classname="tests.test_api" name="test_readyz_503_sin_bd" time="0.016" /><testcase classname="tests.test_api" name="test_readyz_ok_con_bd" time="0.081" /><testcase classname="tests.test_api" name="test_404_es_problem_json" time="0.248" /><testcase classname="tests.test_api" name="test_error_validacion_422" time="0.213" /><testcase classname="tests.test_api" name="test_app_error_code_estable" time="0.255" /><testcase classname="tests.test_api" name="test_error_no_controlado_500" time="0.281" /><testcase classname="tests.test_api" name="test_cors_origen_permitido" time="0.018" /><testcase classname="tests.test_api" name="test_cors_origen_rechazado" time="0.015" /><testcase classname="tests.test_api" name="test_request_id_eco_y_generacion" time="0.016" /><testcase classname="tests.test_api" name="test_openapi_expone_rutas_v1" time="0.905" /><testcase classname="tests.test_auth_api" name="test_login_correcto" time="1.014" /><testcase classname="tests.test_auth_api" name="test_login_incorrecto" time="1.269" /><testcase classname="tests.test_auth_api" name="test_token_expirado" time="0.910" /><testcase classname="tests.test_auth_api" name="test_refresh_rota_y_el_reuso_falla" time="1.430" /><testcase classname="tests.test_auth_api" name="test_revocacion_logout" time="1.253" /><testcase classname="tests.test_auth_api" name="test_permisos_insuficientes" time="1.514" /><testcase classname="tests.test_auth_api" name="test_acceso_autorizado" time="1.313" /><testcase classname="tests.test_auth_api" name="test_acceso_sin_token_o_token_basura" time="0.939" /><testcase classname="tests.test_auth_api" name="test_pin_alcance_pos_nunca_administra" time="1.891" /><testcase classname="tests.test_auth_api" name="test_refresh_sin_token" time="0.676" /><testcase classname="tests.test_auth_api" name="test_rate_limit_login" time="0.431" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/auth/refresh]" time="0.023" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/auth/me]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/users]" time="0.046" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/users]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/users/{user_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PUT /api/v1/admin/users/{user_id}/password]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PUT /api/v1/admin/users/{user_id}/pin]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/roles]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/roles]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/roles/{role_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PUT /api/v1/admin/roles/{role_id}/permissions]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/permissions]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/terminals]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/terminals]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/terminals/{terminal_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/admin/terminals/{terminal_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/devices]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/devices]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/devices/{device_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/admin/devices/{device_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/devices/{device_id}/rotate-token]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/audit]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/backups]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/backups/run]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/departments]" time="0.078" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/departments]" time="0.007" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/catalog/departments/{department_id}]" time="0.006" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/catalog/departments/{department_id}]" time="0.007" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/departments/reorder]" time="0.007" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/categories]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/categories]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/catalog/categories/{category_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/catalog/categories/{category_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/categories/reorder]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/products]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/products]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/products/{product_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/catalog/products/{product_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/catalog/products/{product_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/products/{product_id}/prices]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/products/reorder]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/tiers]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/tiers]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/catalog/tiers/{tier_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/tax-rates]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/tax-rates]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/pos]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/catalog/panels]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/panels]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/catalog/panels/{panel_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/catalog/panels/{panel_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/panels/reorder]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/panels/{panel_id}/subpanels]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/catalog/subpanels/{subpanel_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/catalog/subpanels/{subpanel_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/catalog/subpanels/reorder]" time="0.005" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PUT /api/v1/catalog/panels/{panel_id}/items]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/catalog/panel-items/{item_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/payment-methods]" time="0.011" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/payment-methods]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/payment-methods/{method_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/admin/payment-methods/{method_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/sales/orders]" time="0.040" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/sales/orders]" time="0.007" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/sales/orders/{order_id}]" time="0.007" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/sales/orders/{order_id}/lines]" time="0.007" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/sales/orders/{order_id}/lines/{line_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/sales/orders/{order_id}/lines/{line_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/sales/orders/{order_id}/close]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/sales/orders/{order_id}/void]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/sales/orders/{order_id}/refund]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/cash/sessions]" time="0.027" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/cash/sessions]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/cash/sessions/current]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/cash/sessions/{session_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/cash/sessions/{session_id}/report]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/cash/sessions/{session_id}/movements]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/cash/sessions/{session_id}/counts]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/cash/sessions/{session_id}/close]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/documents/tickets/{ticket_id}]" time="0.016" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/documents/tickets/{ticket_id}/reprint]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/documents/invoices]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/documents/invoices/{invoice_id}]" time="0.006" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/documents/invoices/{invoice_id}/void]" time="0.005" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/documents/invoices/{invoice_id}/rectifications]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/business-settings]" time="0.010" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/business-settings]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PUT /api/v1/admin/logo]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/admin/logo]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/printing/jobs]" time="0.019" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/printing/jobs/{job_id}]" time="0.005" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/printing/jobs/{job_id}/retry]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/printing/jobs/{job_id}/cancel]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/printing/jobs/{job_id}/confirm]" time="0.005" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/printing/dispatch]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/printing/copies/tickets/{ticket_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/printing/copies/invoices/{invoice_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/admin/printers]" time="0.013" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/printers]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[PATCH /api/v1/admin/printers/{printer_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[DELETE /api/v1/admin/printers/{printer_id}]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[POST /api/v1/admin/printers/{printer_id}/test]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/tickets]" time="0.042" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/invoices]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/invoices/{invoice_id}]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/cash-closures]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/stats/summary]" time="0.005" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/stats/by-product]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/stats/by-category]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/stats/by-waiter]" time="0.003" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/stats/by-payment-method]" time="0.004" /><testcase classname="tests.test_auth_wall" name="test_operacion_de_negocio_exige_credenciales[GET /api/v1/reports/stats/by-period]" time="0.006" /><testcase classname="tests.test_cash_api" name="test_ciclo_completo_de_caja" time="2.564"><failure message="AssertionError: assert '5650.00' == '56.50'&#10;  &#10;  - 56.50&#10;  + 5650.00">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6AC7F20&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C75BBCE0&gt;
+
+    def test_ciclo_completo_de_caja(db, client):
+        h = _headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'cajero'")).scalar_one()
+    
+        # Apertura con fondo inicial.
+        opened = _open(client, h, terminal_id := _mk_terminal(db))
+        assert opened.status_code == 201, opened.text
+        cash = opened.json()
+        assert cash["status"] == "open" and cash["opening_amount"] == "50.00"
+        assert (cash["expected_amount"], cash["counted_amount"],
+                cash["difference"], cash["closed_at"]) == (None, None, None, None)
+        assert cash["opened_by"] == str(user_id)
+        cash_id = cash["id"]
+    
+        # Venta 3.00 en efectivo y devolución de 1.50 en efectivo.
+        cash_method = _mk_payment_method(db)
+        _, cafe = _tax_and_product(client, h)
+        order = _mk_order(client, h, terminal_id)
+        line = _add_line(client, h, order["id"], {"product_id": cafe["id"], "quantity": "2"})
+        closed = _close_sale(client, h, order["id"], cash_id, [_pay(cash_method, "3.00")])
+        assert closed["status"] == "paid"
+        refund = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash_id, "reason": "Un café estropeado",
+            "lines": [{"line_id": line["id"], "quantity": "1"}],
+            "payments": [_pay(cash_method, "1.50")],
+        })
+        assert refund.status_code == 201, refund.text
+    
+        # Entrada y salida de efectivo con motivo.
+        entry = client.post(f"{CASH}/sessions/{cash_id}/movements", headers=h, json={
+            "kind": "in", "amount": "10.00", "reason": "Cambio recogido de otro terminal"})
+        assert entry.status_code == 201, entry.text
+        assert entry.json()["kind"] == "in" and entry.json()["amount"] == "10.00"
+        out = client.post(f"{CASH}/sessions/{cash_id}/movements", headers=h, json={
+            "kind": "out", "amount": "5.00", "reason": "Retirada a caja fuerte"})
+        assert out.status_code == 201, out.text
+    
+        # Listado X (sesión abierta): el esperado lo calcula el backend.
+        report = client.get(f"{CASH}/sessions/{cash_id}/report", headers=h)
+        assert report.status_code == 200
+        x = report.json()
+        assert x["difference"] is None  # sin cerrar, nada congelado
+        assert (x["opening_amount"], x["cash_sales"], x["cash_refunds"],
+                x["cash_in"], x["cash_out"]) == ("50.00", "3.00", "1.50", "10.00", "5.00")
+        assert x["expected_cash"] == "56.50"  # 50 + 3 − 1,5 + 10 − 5
+        [total] = x["method_totals"]
+        assert (total["code"], total["kind"], total["sales_total"], total["sales_count"],
+                total["refunds_total"], total["refunds_count"]) == (
+            "CASH", "cash", "3.00", 1, "1.50", 1)
+        assert [m["reason"] for m in x["movements"]] == [
+            "Cambio recogido de otro terminal", "Retirada a caja fuerte"]
+    
+        # Arqueo parcial: 56,50 contados → cuadra; la sesión NO se cierra.
+        partial = client.post(f"{CASH}/sessions/{cash_id}/counts", headers=h, json={
+            "lines": _lines(("5000", 1), ("500", 1), ("100", 1), ("50", 1))})
+        assert partial.status_code == 201, partial.text
+&gt;       assert partial.json()["counted_amount"] == "56.50"
+E       AssertionError: assert '5650.00' == '56.50'
+E         
+E         - 56.50
+E         + 5650.00
+
+tests\test_cash_api.py:242: AssertionError</failure></testcase><testcase classname="tests.test_cash_api" name="test_apertura_duplicada_y_terminal_invalido" time="1.274"><failure message="sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint &quot;uq_terminals_code&quot;&#10;DETAIL:  Key (code)=(T1) already exists.&#10;[SQL: INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id]&#10;[parameters: {'c': 'T1', 'n': 'Terminal T1'}]&#10;(Background on this error at: https://sqlalche.me/e/20/gkpj)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6BDC8C0&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C6BAAF50&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C7695590&gt;
+parameters = [{'c': 'T1', 'n': 'Terminal T1'}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7c5d910&gt;
+query = 'INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id'
+params = {'c': 'T1', 'n': 'Terminal T1'}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_terminals_code"
+E           DETAIL:  Key (code)=(T1) already exists.
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: UniqueViolation
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6BDC8C0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C797BF00&gt;
+
+    def test_apertura_duplicada_y_terminal_invalido(db, client):
+        h = _headers(db, client)
+    
+        missing = _open(client, h, str(uuid4()))
+        assert missing.status_code == 404 and missing.json()["code"] == "NOT_FOUND"
+    
+        # Dinero como float: rechazado por contrato (§3).
+        floated = client.post(f"{CASH}/sessions", headers=h, json={
+            "terminal_id": _mk_terminal(db), "opening_amount": 50.5})
+        assert floated.status_code == 422
+    
+&gt;       terminal = _mk_terminal(db)
+                   ^^^^^^^^^^^^^^^^
+
+tests\test_cash_api.py:297: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_cash_api.py:114: in _mk_terminal
+    return str(db.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7c5d910&gt;
+query = 'INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id'
+params = {'c': 'T1', 'n': 'Terminal T1'}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_terminals_code"
+E           DETAIL:  Key (code)=(T1) already exists.
+E           [SQL: INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id]
+E           [parameters: {'c': 'T1', 'n': 'Terminal T1'}]
+E           (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: IntegrityError</failure></testcase><testcase classname="tests.test_cash_api" name="test_apertura_concurrente_un_solo_ganador" time="1.272" /><testcase classname="tests.test_cash_api" name="test_operaciones_sobre_sesion_cerrada_rechazadas" time="1.450"><failure message="sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint &quot;uq_terminals_code&quot;&#10;DETAIL:  Key (code)=(T1) already exists.&#10;[SQL: INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id]&#10;[parameters: {'c': 'T1', 'n': 'Terminal T1'}]&#10;(Background on this error at: https://sqlalche.me/e/20/gkpj)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6AC6120&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C6BA9F50&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C7695590&gt;
+parameters = [{'c': 'T1', 'n': 'Terminal T1'}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7c5eed0&gt;
+query = 'INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id'
+params = {'c': 'T1', 'n': 'Terminal T1'}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "uq_terminals_code"
+E           DETAIL:  Key (code)=(T1) already exists.
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: UniqueViolation
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6AC6120&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6E71590&gt;
+
+    def test_operaciones_sobre_sesion_cerrada_rechazadas(db, client):
+        h = _headers(db, client)
+        cash_id = _open(client, h, _mk_terminal(db)).json()["id"]
+        closed = client.post(f"{CASH}/sessions/{cash_id}/close", headers=h,
+                             json={"lines": _lines(("5000", 1))})
+        assert closed.status_code == 200
+    
+        dup_close = client.post(f"{CASH}/sessions/{cash_id}/close", headers=h,
+                                json={"lines": _lines(("5000", 1))})
+        assert dup_close.status_code == 409 and dup_close.json()["code"] == "CONFLICT"
+    
+        movement = client.post(f"{CASH}/sessions/{cash_id}/movements", headers=h, json={
+            "kind": "in", "amount": "10.00", "reason": "tarde"})
+        assert movement.status_code == 409
+    
+        count = client.post(f"{CASH}/sessions/{cash_id}/counts", headers=h,
+                            json={"lines": _lines(("5000", 1))})
+        assert count.status_code == 409
+    
+        # Y el terminal puede reabrir caja después del cierre.
+&gt;       reopened = _open(client, h, _mk_terminal(db))
+                                    ^^^^^^^^^^^^^^^^
+
+tests\test_cash_api.py:365: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_cash_api.py:114: in _mk_terminal
+    return str(db.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7c5eed0&gt;
+query = 'INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id'
+params = {'c': 'T1', 'n': 'Terminal T1'}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.IntegrityError: (psycopg.errors.UniqueViolation) duplicate key value violates unique constraint "uq_terminals_code"
+E           DETAIL:  Key (code)=(T1) already exists.
+E           [SQL: INSERT INTO terminals (code, name) VALUES (%(c)s, %(n)s) RETURNING id]
+E           [parameters: {'c': 'T1', 'n': 'Terminal T1'}]
+E           (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: IntegrityError</failure></testcase><testcase classname="tests.test_cash_api" name="test_recuento_invalido_rechazado" time="1.144" /><testcase classname="tests.test_cash_api" name="test_historico_de_sesiones" time="1.413"><failure message="AssertionError: assert ('2e8ecf61-e8...0', '5150.00') == ('2e8ecf61-e8...2.00', '2.00')&#10;  &#10;  At index 3 diff: '5200.00' != '52.00'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D99400&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFF9B0&gt;
+
+    def test_historico_de_sesiones(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        cash_id = _open(client, h, terminal).json()["id"]
+    
+        # Aún abierta: solo visible sin filtro o con status=open.
+        listed = client.get(f"{CASH}/sessions", headers=h, params={"terminal_id": terminal})
+        assert listed.status_code == 200 and listed.json()["total"] == 1
+        assert listed.json()["items"][0]["status"] == "open"
+        assert client.get(f"{CASH}/sessions", headers=h,
+                          params={"status": "closed"}).json()["items"] == []
+    
+        client.post(f"{CASH}/sessions/{cash_id}/close", headers=h,
+                    json={"lines": _lines(("5000", 1), ("100", 2))})  # 52,00 vs 50,00
+    
+        closed_list = client.get(f"{CASH}/sessions", headers=h, params={"status": "closed"})
+        assert closed_list.status_code == 200
+        [z] = closed_list.json()["items"]
+&gt;       assert (z["id"], z["status"], z["expected_amount"],
+                z["counted_amount"], z["difference"]) == (
+            cash_id, "closed", "50.00", "52.00", "2.00")
+E       AssertionError: assert ('2e8ecf61-e8...0', '5150.00') == ('2e8ecf61-e8...2.00', '2.00')
+E         
+E         At index 3 diff: '5200.00' != '52.00'
+E         Use -v to get more diff
+
+tests\test_cash_api.py:411: AssertionError</failure></testcase><testcase classname="tests.test_cash_api" name="test_permisos_de_caja" time="1.557" /><testcase classname="tests.test_cash_domain" name="test_contado_suma_denominaciones" time="0.001" /><testcase classname="tests.test_cash_domain" name="test_contado_vacio_y_cantidad_cero" time="0.001" /><testcase classname="tests.test_cash_domain" name="test_esperado_solo_fondo_inicial" time="0.001" /><testcase classname="tests.test_cash_domain" name="test_esperado_ciclo_completo" time="0.001" /><testcase classname="tests.test_cash_domain" name="test_esperado_con_devolucion_mayor_que_la_venta" time="0.001" /><testcase classname="tests.test_cash_domain" name="test_diferencia_positiva_negativa_y_cero" time="0.001" /><testcase classname="tests.test_catalog_api" name="test_crud_departamento" time="1.725" /><testcase classname="tests.test_catalog_api" name="test_categoria_exige_departamento_existente" time="1.458" /><testcase classname="tests.test_catalog_api" name="test_producto_completo" time="1.795" /><testcase classname="tests.test_catalog_api" name="test_cambio_de_precio_abre_fila_nueva" time="1.820" /><testcase classname="tests.test_catalog_api" name="test_mismo_precio_no_abre_fila" time="1.989" /><testcase classname="tests.test_catalog_api" name="test_sku_y_barcode_duplicados_conflicto" time="2.036"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C690DC70&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C995FAC0&gt;
+
+    def test_sku_y_barcode_duplicados_conflicto(db, client):
+        h = _admin_headers(db, client)
+        tax = _mk_tax_rate(client, h)
+        _mk_product(client, h, tax["id"], sku="SKU-1", barcodes=["8400000000017"])
+    
+        dup_sku = client.post(f"{CAT}/products", headers=h, json={
+            "name": "Otro", "tax_rate_id": tax["id"], "price": "2.00", "sku": "SKU-1",
+        })
+        assert dup_sku.status_code == 409 and dup_sku.json()["code"] == "CONFLICT"
+    
+        dup_barcode = client.post(f"{CAT}/products", headers=h, json={
+            "name": "Otro", "tax_rate_id": tax["id"], "price": "2.00",
+            "barcodes": ["8400000000017"],
+        })
+        assert dup_barcode.status_code == 409
+    
+        # El strip del validador no burla la unicidad.
+        dup_espacios = client.post(f"{CAT}/products", headers=h, json={
+            "name": "Otro", "tax_rate_id": tax["id"], "price": "2.00",
+            "barcodes": ["  8400000000017  "],
+        })
+        assert dup_espacios.status_code == 409
+    
+        # Reasignar el mismo código a su dueño (PATCH) sí está permitido.
+        owner = client.get(f"{CAT}/products", headers=h).json()["items"][0]
+        ok = client.patch(f"{CAT}/products/{owner['id']}", headers=h,
+                          json={"barcodes": ["8400000000017"]})
+&gt;       assert ok.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code
+
+tests\test_catalog_api.py:357: AssertionError</failure></testcase><testcase classname="tests.test_catalog_api" name="test_reorder_departamentos" time="1.531" /><testcase classname="tests.test_catalog_api" name="test_baja_logica_excluye_del_pos" time="1.682" /><testcase classname="tests.test_catalog_api" name="test_pos_filtra_cadena_inactiva" time="2.504" /><testcase classname="tests.test_catalog_api" name="test_permisos_catalogo" time="1.921" /><testcase classname="tests.test_catalog_api" name="test_tax_rate_versionado" time="1.469" /><testcase classname="tests.test_catalog_api" name="test_listado_paginado_y_busqueda" time="2.257" /><testcase classname="tests.test_catalog_api" name="test_tier_inexistente_404" time="1.500" /><testcase classname="tests.test_catalog_api" name="test_reemplazo_de_colecciones" time="1.578"><failure message="AssertionError: assert [{'path': 'a....rt_order': 1}] == [{'path': 'c....rt_order': 0}]&#10;  &#10;  At index 0 diff: {'path': 'a.png', 'sort_order': 0} != {'path': 'c.png', 'sort_order': 0}&#10;  Left contains 2 more items, first extra item: {'path': 'c.png', 'sort_order': 0}&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6897C50&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C995F130&gt;
+
+    def test_reemplazo_de_colecciones(db, client):
+        h = _admin_headers(db, client)
+        tax = _mk_tax_rate(client, h)
+        product = _mk_product(
+            client, h, tax["id"], price="1.00",
+            barcodes=["1", "2"],
+            images=[{"path": "a.png", "sort_order": 0}, {"path": "b.png", "sort_order": 1}],
+        )
+    
+        # Solo imágenes: queda exactamente la colección enviada.
+        patched = client.patch(f"{CAT}/products/{product['id']}", headers=h, json={
+            "images": [{"path": "c.png", "sort_order": 0}],
+        })
+        assert patched.status_code == 200
+&gt;       assert patched.json()["images"] == [{"path": "c.png", "sort_order": 0}]
+E       AssertionError: assert [{'path': 'a....rt_order': 1}] == [{'path': 'c....rt_order': 0}]
+E         
+E         At index 0 diff: {'path': 'a.png', 'sort_order': 0} != {'path': 'c.png', 'sort_order': 0}
+E         Left contains 2 more items, first extra item: {'path': 'c.png', 'sort_order': 0}
+E         Use -v to get more diff
+
+tests\test_catalog_api.py:589: AssertionError</failure></testcase><testcase classname="tests.test_catalog_schemas" name="test_dinero_serializa_como_string" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_dinero_rechaza_float_de_entrada" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_dinero_acepta_string_y_rechaza_negativos_o_exceso_de_decimales" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_precio_por_tarifa_tambien_es_string_en_json" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_tipo_iva_limites_de_porcentaje_y_fecha" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_barcodes_se_limpian" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_barcodes_rechaza_vacios_y_duplicados" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_barcodes_ausente_es_none_no_lista_vacia" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_update_parcial_solo_incluye_lo_enviado" time="0.001" /><testcase classname="tests.test_catalog_schemas" name="test_update_aplica_las_mismas_reglas_de_barcode" time="0.001" /><testcase classname="tests.test_documents_api" name="test_el_cobro_emite_ticket_automatico" time="2.110"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C8186B70&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFE580&gt;
+
+    def test_el_cobro_emite_ticket_automatico(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+    
+        order, line, closed = _sale(client, h, db, terminal, method)
+        # El ticket viaja en la MISMA respuesta del cobro: una venta cobrada
+        # sin ticket no existe.
+        assert closed["ticket"]["doc_number"] == "A-000001"
+        ticket_id = closed["ticket"]["id"]
+    
+        detail = client.get(f"{DOCS}/tickets/{ticket_id}", headers=h)
+        assert detail.status_code == 200, detail.text
+        payload = detail.json()
+        assert payload["order_id"] == order["id"]
+        assert payload["series"] == "A" and payload["number"] == 1
+        assert payload["reprint_count"] == 0
+        body = payload["payload"]
+        assert body["kind"] == "ticket"
+        assert body["doc_number"] == "A-000001"
+        assert body["order"] == {
+            "id": order["id"], "type": "sale", "original_order_id": None,
+            "original_doc_number": None, "customer_id": None,
+        }
+        assert [l["name"] for l in body["lines"]] == ["Café solo"]
+        assert Decimal(body["totals"]["total"]) == Decimal("3.00")
+        assert body["payments"] == [{"code": "CASH", "kind": "cash", "amount": "3.00"}]
+        assert Decimal(body["change_total"]) == 0
+        # Sin logo ni datos fiscales configurados: cabecera vacía (documento sin él).
+        assert body["header"] == {"business": None, "logo": None}
+    
+        # Segunda venta en el MISMO terminal: correlativo.
+&gt;       _, _, closed2 = _sale(client, h, db, terminal, method, quantity="1")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_documents_api.py:305: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_documents_api.py:242: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFE580&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YWYyY2YyNS1hNjk5LTQ5MWMtOTM1Mi1kZjE0ZDUwOWR...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMTg3MTEsImV4cCI6MTc4OTMxOTYxMX0.z5TXGSp3u3KIpuOY0KLIeaMmpqurndd-zdrRm_KorKk'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{CAT}/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_documents_api.py:171: KeyError</failure></testcase><testcase classname="tests.test_documents_api" name="test_cierre_concurrente_emite_numeros_distintos" time="2.380" /><testcase classname="tests.test_documents_api" name="test_la_devolucion_emite_ticket_negativo_con_referencia" time="2.075" /><testcase classname="tests.test_documents_api" name="test_factura_de_dos_ventas_del_mismo_cliente" time="1.964"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C69637A0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFFF00&gt;
+
+    def test_factura_de_dos_ventas_del_mismo_cliente(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        customer = _mk_customer(db, tax_id="B12345678", name="Cliente SL")
+    
+        order1, _, closed1 = _sale(client, h, db, terminal, method, customer_id=customer)
+&gt;       order2, _, _ = _sale(client, h, db, terminal, method, customer_id=customer)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_documents_api.py:392: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_documents_api.py:242: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFFF00&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MzdkMjAxOS1iN2NhLTQ4ZDItODUxOS1hODk0NTJkNjI...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMTg3MTgsImV4cCI6MTc4OTMxOTYxOH0.TDgUCZz7TE1nVvqL8eTf08jX_NkdwyeVDU1kV_jze84'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{CAT}/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_documents_api.py:171: KeyError</failure></testcase><testcase classname="tests.test_documents_api" name="test_reglas_de_facturacion_rechazadas" time="2.012"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C8184F50&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFE7A0&gt;
+
+    def test_reglas_de_facturacion_rechazadas(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        with_nif = _mk_customer(db, tax_id="B11111111")
+        without_nif = _mk_customer(db, tax_id=None, name="Consumidor final")
+    
+        paid_nif, _, _ = _sale(client, h, db, terminal, method, customer_id=with_nif)
+&gt;       paid_nonif, _, _ = _sale(client, h, db, terminal, method, customer_id=without_nif)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_documents_api.py:440: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_documents_api.py:242: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFE7A0&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1ODUyMjhmOS05ZTExLTRjOTUtOWM2NS04MGUxYmZiOWM...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMTg3MjAsImV4cCI6MTc4OTMxOTYyMH0.AiCHogVDB_6X7kaszyIucYfy6NAMkRYM9C6ihhbvEj8'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{CAT}/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_documents_api.py:171: KeyError</failure></testcase><testcase classname="tests.test_documents_api" name="test_no_se_facturan_devoluciones_ni_ventas_negativas" time="2.102" /><testcase classname="tests.test_documents_api" name="test_rectificativa_parcial_por_devolucion" time="2.329"><failure message="AssertionError: assert [] == ['87b72cca-b6...8ba759b0628d']&#10;  &#10;  Right contains one more item: '87b72cca-b66e-43fd-88af-8ba759b0628d'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D48C80&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C4D13460&gt;
+
+    def test_rectificativa_parcial_por_devolucion(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        customer = _mk_customer(db, tax_id="B12345678")
+    
+        order, line, closed, invoice = _invoiced_sale(db, client, h, terminal, method, customer)
+        refund = _refund(client, h, order["id"], _cash_session_id(client, h, terminal),
+                         line, method, "1.50")
+    
+        resp = client.post(f"{DOCS}/invoices/{invoice['id']}/rectifications", headers=h, json={
+            "mode": "partial", "refund_order_id": refund["id"], "reason": "Devolución parcial",
+        })
+        assert resp.status_code == 201, resp.text
+        rect = resp.json()
+        assert rect["series"] == "R" and rect["number"] == 1
+        assert rect["doc_number"] == f"R {YEAR}/000001"
+        assert rect["rectified_invoice_id"] == invoice["id"]
+        assert rect["status"] == "issued"
+        # Importes negativos: los de la devolución, no de la factura completa.
+        assert Decimal(rect["total_amount"]) == Decimal("-1.50")
+        assert Decimal(rect["total_base"]) + Decimal(rect["total_tax"]) == Decimal("-1.50")
+        # La parcial sí enlaza la orden de devolución (UNIQUE una rectificativa por venta).
+&gt;       assert [line["order_id"] for line in rect["lines"]] == [refund["id"]]
+E       AssertionError: assert [] == ['87b72cca-b6...8ba759b0628d']
+E         
+E         Right contains one more item: '87b72cca-b66e-43fd-88af-8ba759b0628d'
+E         Use -v to get more diff
+
+tests\test_documents_api.py:518: AssertionError</failure></testcase><testcase classname="tests.test_documents_api" name="test_rectificativa_total_anula_el_importe_completo" time="2.170" /><testcase classname="tests.test_documents_api" name="test_reglas_de_rectificacion_rechazadas" time="2.218"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C690C7D0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFF9B0&gt;
+
+    def test_reglas_de_rectificacion_rechazadas(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        customer1 = _mk_customer(db, tax_id="B11111111", name="Cliente Uno SL")
+        customer2 = _mk_customer(db, tax_id="B22222222", name="Cliente Dos SL")
+    
+        order1, line1, _, invoice1 = _invoiced_sale(db, client, h, terminal, method, customer1)
+&gt;       order2, _, _, invoice2 = _invoiced_sale(db, client, h, terminal, method, customer2)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_documents_api.py:568: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_documents_api.py:489: in _invoiced_sale
+    order, line, closed = _sale(client, h, db, terminal, method, customer_id=customer)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_documents_api.py:242: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x00000177C7AFF9B0&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YzFhZTRhNS1mODY1LTQ1ODItODYzNy0zOGJiYTJjYzc...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMTg3MjksImV4cCI6MTc4OTMxOTYyOX0.v81ekazsEYT7g0m5FhVgGjFU2qVdV5JvPiQSmJxT_A4'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{CAT}/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_documents_api.py:171: KeyError</failure></testcase><testcase classname="tests.test_documents_api" name="test_anulacion_de_factura_con_motivo" time="2.422" /><testcase classname="tests.test_documents_api" name="test_reimpresion_de_ticket_incrementa_el_contador" time="2.364" /><testcase classname="tests.test_documents_api" name="test_configuracion_de_negocio_y_logo_con_snapshot" time="2.535"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C8184F50&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6D42E00&gt;
+_data_dir = WindowsPath('C:/Users/BZENASST/AppData/Local/Temp/pytest-of-BZENASST/pytest-10/test_configuracion_de_negocio_0/data')
+
+    def test_configuracion_de_negocio_y_logo_con_snapshot(db, client, _data_dir):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+    
+        # Estado inicial: sin datos fiscales ni logo; series por defecto.
+        settings = client.get(f"{ADMIN}/business-settings", headers=h)
+        assert settings.status_code == 200, settings.text
+        assert settings.json() == {
+            "business": {"name": "", "tax_id": "", "address": "", "phone": ""},
+            "logo": None,
+            "series": {"tickets": "A", "invoices": "FAC", "rectifications": "R"},
+            "currency": {"decimals": "2"},
+        }
+    
+        # PATCH parcial: solo los campos enviados.
+        patched = client.patch(f"{ADMIN}/business-settings", headers=h, json={
+            "name": "Bar Ejemplo SL", "tax_id": "B00000000",
+        })
+        assert patched.status_code == 200, patched.text
+        assert patched.json()["business"] == {
+            "name": "Bar Ejemplo SL", "tax_id": "B00000000", "address": "", "phone": "",
+        }
+    
+        # Venta ANTES del logo: ticket sin logo.
+        _, _, closed_sin = _sale(client, h, db, terminal, method)
+    
+        # PUT logo: fichero en el volumen + referencia en parámetros.
+        data = client.put(f"{ADMIN}/logo", headers=h, json={
+            "mime": "image/png", "data": base64.b64encode(PNG_FALSO).decode("ascii"),
+        })
+        assert data.status_code == 200, data.text
+        logo = data.json()["logo"]
+        assert logo["mime"] == "image/png" and logo["size"] == len(PNG_FALSO)
+        assert UUID(logo["uploaded_by"])
+        stored = _data_dir / "logos" / "logo.png"
+        assert stored.read_bytes() == PNG_FALSO
+    
+        # Venta DESPUÉS del logo: el ticket embebe el logo como data URI.
+&gt;       _, _, closed_con = _sale(client, h, db, terminal, method)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_documents_api.py:699: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_documents_api.py:242: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6D42E00&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjZjdlNTg5MC03YTJiLTRkNjYtYjYzYy0wYjdhOWFkZjY...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMTg3MzYsImV4cCI6MTc4OTMxOTYzNn0._aNYu2kdHBrnsqtFghzUCydfx4rnNS7stF0hkh0KTWg'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{CAT}/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_documents_api.py:171: KeyError</failure></testcase><testcase classname="tests.test_documents_api" name="test_validaciones_del_logo" time="1.526" /><testcase classname="tests.test_documents_api" name="test_permisos_de_documentos" time="3.410" /><testcase classname="tests.test_documents_domain" name="test_formato_de_numero_de_ticket" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_formato_de_numero_de_factura" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_extension_de_logo_admite_solo_png_y_jpeg" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_data_uri_del_logo" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_merge_de_desgloses_de_varias_ordenes" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_merge_con_lista_vacia_o_desgloses_vacios" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_negate_de_desglose_para_rectificativa_total" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_cabecera_vacia_sin_datos_ni_logo" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_cabecera_filtra_campos_vacios" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_cabecera_con_logo" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_payload_de_ticket" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_payload_de_factura_con_y_sin_rectificativa" time="0.001" /><testcase classname="tests.test_documents_domain" name="test_constantes_de_rectificacion" time="0.001" /><testcase classname="tests.test_events_bus" name="test_el_frame_del_sobre_es_json_seguro" time="0.001" /><testcase classname="tests.test_events_bus" name="test_publish_encola_en_los_suscriptores_del_tema" time="0.002" /><testcase classname="tests.test_events_bus" name="test_suscriptor_lento_se_descarta_sin_reventar_el_commit" time="0.003" /><testcase classname="tests.test_events_bus" name="test_publish_sin_suscriptores_es_un_no_op" time="0.001" /><testcase classname="tests.test_events_bus" name="test_deliver_publica_los_sobres_confirmados_y_discard_los_tira" time="0.002" /><testcase classname="tests.test_events_bus" name="test_attach_bus_registra_el_bus_en_la_sesion" time="0.001" /><testcase classname="tests.test_events_bus" name="test_temas_fijos_exigen_su_permiso" time="0.001" /><testcase classname="tests.test_events_bus" name="test_terminal_exige_cash_open_y_lo_desconocido_se_deniega" time="0.001" /><testcase classname="tests.test_events_bus" name="test_el_orden_de_la_respuesta_es_el_pedido" time="0.001" /><testcase classname="tests.test_gzip_middleware" name="test_gzip_cableado_en_el_stack" time="0.003" /><testcase classname="tests.test_gzip_middleware" name="test_respuesta_pequena_sin_gzip" time="0.014" /><testcase classname="tests.test_gzip_middleware" name="test_respuesta_grande_se_comprime" time="0.017" /><testcase classname="tests.test_hardware_adapters" name="test_defaults_implementa_los_cinco_protocolos" time="0.001" /><testcase classname="tests.test_hardware_adapters" name="test_los_sustitutos_satisfacen_su_protocolo" time="0.001" /><testcase classname="tests.test_hardware_adapters" name="test_hardware_error_trae_code_por_defecto" time="0.001" /><testcase classname="tests.test_hardware_adapters" name="test_null_cash_drawer_registra_las_aperturas" time="0.002" /><testcase classname="tests.test_hardware_adapters" name="test_failing_cash_drawer_lanza_hardware_error" time="0.002" /><testcase classname="tests.test_hardware_adapters" name="test_null_scanner_encola_y_vacia" time="0.003" /><testcase classname="tests.test_hardware_adapters" name="test_simulated_pinpad_aprueba_y_registra" time="0.002" /><testcase classname="tests.test_hardware_adapters" name="test_simulated_cashdro_entrega_lo_pedido" time="0.002" /><testcase classname="tests.test_hardware_adapters" name="test_null_display_recuerda_lineas_y_clears" time="0.003" /><testcase classname="tests.test_hardware_api" name="test_el_efectivo_abre_el_cajon" time="2.072"><failure message="AssertionError: assert [UUID('06f6cb...fa8f27c78f6')] == ['06f6cbed-5d...afa8f27c78f6']&#10;  &#10;  At index 0 diff: UUID('06f6cbed-5d37-4f0f-b9c0-afa8f27c78f6') != '06f6cbed-5d37-4f0f-b9c0-afa8f27c78f6'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6BDFE30&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C47939B0&gt;
+drawer = &lt;app.adapters.hardware.NullCashDrawerAdapter object at 0x00000177C82710E0&gt;
+
+    def test_el_efectivo_abre_el_cajon(db, client, drawer):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)  # cash → opens_drawer=True
+    
+        resp = _sale_and_close(client, h, db, terminal, method)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["ticket"]["doc_number"] == "A-000001"
+&gt;       assert drawer.opens == [terminal]  # la apertura llega DESPUÉS del commit
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert [UUID('06f6cb...fa8f27c78f6')] == ['06f6cbed-5d...afa8f27c78f6']
+E         
+E         At index 0 diff: UUID('06f6cbed-5d37-4f0f-b9c0-afa8f27c78f6') != '06f6cbed-5d37-4f0f-b9c0-afa8f27c78f6'
+E         Use -v to get more diff
+
+tests\test_hardware_api.py:187: AssertionError</failure></testcase><testcase classname="tests.test_hardware_api" name="test_la_tarjeta_no_abre_el_cajon" time="1.950" /><testcase classname="tests.test_hardware_api" name="test_cajon_atascado_no_revienta_la_venta" time="1.951" /><testcase classname="tests.test_idempotency_api" name="test_cobro_sin_clave_rechazado" time="1.204"><failure message="sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near &quot;RETURNING&quot;&#10;LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...&#10;                                                             ^&#10;[SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id]&#10;(Background on this error at: https://sqlalche.me/e/20/f405)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6897D40&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C7F65050&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C93C2AD0&gt;
+parameters = [{}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c942bb90&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id'
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at or near "RETURNING"
+E           LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...
+E                                                                        ^
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: SyntaxError
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6897D40&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDCF30&gt;
+
+    # 1 · El cobro EXIGE la clave (§4.1): sin cabecera, 422 y sin efectos
+    # ---------------------------------------------------------------------------
+&gt;   def test_cobro_sin_clave_rechazado(db, client):
+                              ^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_idempotency_api.py:202: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_idempotency_api.py:177: in _venta_en_curso
+    text("SELECT id FROM users WHERE username = 'jefe'")
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_idempotency_api.py:126: in _mk_cash_session
+    else:
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c942bb90&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id'
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near "RETURNING"
+E           LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...
+E                                                                        ^
+E           [SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id]
+E           (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: ProgrammingError</failure></testcase><testcase classname="tests.test_idempotency_api" name="test_cobro_reintento_misma_clave_mismo_ticket" time="1.131"><failure message="sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near &quot;RETURNING&quot;&#10;LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...&#10;                                                             ^&#10;[SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id]&#10;(Background on this error at: https://sqlalche.me/e/20/f405)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D4B6B0&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C8198D50&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C93C2AD0&gt;
+parameters = [{}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7273dd0&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id'
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at or near "RETURNING"
+E           LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...
+E                                                                        ^
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: SyntaxError
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D4B6B0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDD370&gt;
+
+    # 2 · Reintento del cobro con la misma clave: MISMA respuesta, NINGÚN efecto
+    # ---------------------------------------------------------------------------
+&gt;   def test_cobro_reintento_misma_clave_mismo_ticket(db, client):
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_idempotency_api.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_idempotency_api.py:177: in _venta_en_curso
+    text("SELECT id FROM users WHERE username = 'jefe'")
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_idempotency_api.py:126: in _mk_cash_session
+    else:
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7273dd0&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id'
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near "RETURNING"
+E           LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...
+E                                                                        ^
+E           [SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id]
+E           (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: ProgrammingError</failure></testcase><testcase classname="tests.test_idempotency_api" name="test_cobro_misma_clave_otro_contenido_409" time="1.205"><failure message="sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near &quot;RETURNING&quot;&#10;LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...&#10;                                                             ^&#10;[SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id]&#10;(Background on this error at: https://sqlalche.me/e/20/f405)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C690C5F0&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C7F67450&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C93C2AD0&gt;
+parameters = [{}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c9429250&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id'
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at or near "RETURNING"
+E           LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...
+E                                                                        ^
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: SyntaxError
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C690C5F0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDF680&gt;
+
+    # 3 · La misma clave con OTRO contenido: 409 (nunca hereda la respuesta)
+    # ---------------------------------------------------------------------------
+&gt;   def test_cobro_misma_clave_otro_contenido_409(db, client):
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_idempotency_api.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_idempotency_api.py:177: in _venta_en_curso
+    text("SELECT id FROM users WHERE username = 'jefe'")
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_idempotency_api.py:126: in _mk_cash_session
+    else:
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c9429250&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id'
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near "RETURNING"
+E           LINE 1: ...sessions (terminal_id, opened_by, opening_amount) RETURNING ...
+E                                                                        ^
+E           [SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount) RETURNING id]
+E           (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: ProgrammingError</failure></testcase><testcase classname="tests.test_idempotency_api" name="test_clave_no_reutilizable_entre_operaciones" time="1.733" /><testcase classname="tests.test_idempotency_api" name="test_abrir_pedido_reintento_no_duplica" time="1.417" /><testcase classname="tests.test_idempotency_api" name="test_annadir_linea_reintento_no_duplica" time="1.729" /><testcase classname="tests.test_idempotency_api" name="test_apertura_de_caja_reintento_no_duplica" time="1.262" /><testcase classname="tests.test_idempotency_api" name="test_movimiento_de_caja_reintento_no_duplica" time="1.445" /><testcase classname="tests.test_idempotency_unit" name="test_clave_ausente" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_clave_vacia_cuenta_como_ausente" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_clave_se_recorta" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_clave_demasiado_larga_es_422" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_clave_en_el_limite_es_valida" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_huella_determinista" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_huella_cambia_con_el_cuerpo" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_huella_cambia_con_la_ruta" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_huella_cambia_con_el_metodo" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_huella_normaliza_mayusculas_del_metodo" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_huella_sin_cuerpo_equivale_a_cuerpo_vacio" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_ttl_es_de_24_horas" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_header_es_el_del_contrato" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_replay_es_inmutable" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_idempotency_es_inmutable" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_contexto_sin_clave_es_none" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_cobro_sin_clave_es_422" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_cobro_con_clave_vacia_tambien_es_422" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_clave_malformada_es_422_incluso_en_operacion_opcional" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_contexto_con_clave_lleva_huella_del_contenido_validado" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_mismo_contenido_misma_huella_aunque_cambien_espacios" time="0.001" /><testcase classname="tests.test_idempotency_unit" name="test_contenido_distinto_huella_distinta" time="0.001" /><testcase classname="tests.test_integrity" name="test_fk_violation_order_bad_terminal" time="0.729" /><testcase classname="tests.test_integrity" name="test_soft_deleted_product_keeps_fk" time="0.678" /><testcase classname="tests.test_integrity" name="test_tickets_unique_per_terminal" time="0.688" /><testcase classname="tests.test_integrity" name="test_document_sequence_concurrent_for_update" time="0.736" /><testcase classname="tests.test_integrity" name="test_one_open_cash_session_per_terminal" time="0.693" /><testcase classname="tests.test_integrity" name="test_cash_session_close_requires_counts" time="0.710" /><testcase classname="tests.test_integrity" name="test_paid_order_requires_cash_session_and_totals" time="0.661" /><testcase classname="tests.test_integrity" name="test_order_line_snapshots_not_null" time="0.667" /><testcase classname="tests.test_integrity" name="test_order_line_discount_bounds" time="0.709" /><testcase classname="tests.test_integrity" name="test_order_line_quantity_not_zero" time="0.745" /><testcase classname="tests.test_integrity" name="test_one_draft_per_dining_table" time="0.794" /><testcase classname="tests.test_integrity" name="test_updated_at_trigger_fires" time="0.652" /><testcase classname="tests.test_integrity" name="test_idempotency_key_dedup" time="0.722" /><testcase classname="tests.test_integrity" name="test_event_log_ids_monotonic" time="0.699" /><testcase classname="tests.test_integrity" name="test_invoice_series_unique" time="0.683" /><testcase classname="tests.test_integrity" name="test_refund_validation" time="0.737"><failure message="sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation &quot;orders&quot; violates check constraint &quot;ck_orders_paid_complete&quot;&#10;DETAIL:  Failing row contains (cc9ed639-e5b5-4805-9f78-0729c63b95cc, c3db5155-7053-4a63-b049-24c4d00de3d5, 1bf7dffb-6c87-4074-b258-5f515ad522da, null, null, null, paid, bar, null, null, 10.00, 2.10, 12.10, null, 2026-09-13 16:59:30.879621+00, null, null, null, 2026-09-13 16:59:30.879621+00).&#10;[SQL: INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id]&#10;[parameters: {'t': UUID('c3db5155-7053-4a63-b049-24c4d00de3d5'), 'u': UUID('1bf7dffb-6c87-4074-b258-5f515ad522da'), 'cs': None, 'dt': None, 's': 'paid', 'ot': 'bar'}]&#10;(Background on this error at: https://sqlalche.me/e/20/gkpj)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C9A34F50&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C70EC050&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C807A990&gt;
+parameters = [{'t': UUID('c3db5155-7053-4a63-b049-24c4d00de3d5'), 'u': UUID('1bf7dffb-6c87-4074-b258-5f515ad522da'), 'cs': None, 'dt': None, ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7227290&gt;
+query = 'INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id'
+params = {'t': UUID('c3db5155-7053-4a63-b049-24c4d00de3d5'), 'u': UUID('1bf7dffb-6c87-4074-b258-5f515ad522da'), 'cs': None, 'dt': None, ...}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.CheckViolation: new row for relation "orders" violates check constraint "ck_orders_paid_complete"
+E           DETAIL:  Failing row contains (cc9ed639-e5b5-4805-9f78-0729c63b95cc, c3db5155-7053-4a63-b049-24c4d00de3d5, 1bf7dffb-6c87-4074-b258-5f515ad522da, null, null, null, paid, bar, null, null, 10.00, 2.10, 12.10, null, 2026-09-13 16:59:30.879621+00, null, null, null, 2026-09-13 16:59:30.879621+00).
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: CheckViolation
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C9A34F50&gt;
+
+    def test_refund_validation(db):
+        t, u = new_terminal(db), new_user(db, new_role(db))
+&gt;       original = new_order(db, t, u, status="paid")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_integrity.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\conftest.py:154: in new_order
+    return _insert(conn, sql.format(extra=extra, extra_vals=extra_vals), **params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\conftest.py:77: in _insert
+    return conn.execute(text(sql), params).scalar_one()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7227290&gt;
+query = 'INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id'
+params = {'t': UUID('c3db5155-7053-4a63-b049-24c4d00de3d5'), 'u': UUID('1bf7dffb-6c87-4074-b258-5f515ad522da'), 'cs': None, 'dt': None, ...}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation "orders" violates check constraint "ck_orders_paid_complete"
+E           DETAIL:  Failing row contains (cc9ed639-e5b5-4805-9f78-0729c63b95cc, c3db5155-7053-4a63-b049-24c4d00de3d5, 1bf7dffb-6c87-4074-b258-5f515ad522da, null, null, null, paid, bar, null, null, 10.00, 2.10, 12.10, null, 2026-09-13 16:59:30.879621+00, null, null, null, 2026-09-13 16:59:30.879621+00).
+E           [SQL: INSERT INTO orders (terminal_id, user_id, cash_session_id, dining_table_id, status, order_type, paid_at, total_base, total_tax, total_amount) VALUES (%(t)s, %(u)s, %(cs)s, %(dt)s, %(s)s, %(ot)s, now(), 10.00, 2.10, 12.10) RETURNING id]
+E           [parameters: {'t': UUID('c3db5155-7053-4a63-b049-24c4d00de3d5'), 'u': UUID('1bf7dffb-6c87-4074-b258-5f515ad522da'), 'cs': None, 'dt': None, 's': 'paid', 'ot': 'bar'}]
+E           (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: IntegrityError</failure></testcase><testcase classname="tests.test_integrity" name="test_print_job_dedupe_key" time="0.737" /><testcase classname="tests.test_integrity" name="test_seed_sql_applies_and_is_idempotent" time="0.706"><failure message="sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near &quot;el&quot;&#10;LINE 1: el instalador los ajusta)&#10;        ^&#10;[SQL: el instalador los ajusta)&#10;-- -----------------------------------------------------------------------------&#10;INSERT INTO parameters (key, value, description) VALUES&#10;    ('tickets.series',        '&quot;A&quot;',      'Serie de numeración de tickets por defecto'),&#10;    ('invoices.series',       '&quot;FAC&quot;',    'Serie de numeración de facturas'),&#10;    ('currency.decimals',     '2',        'Decimales de redondeo del importe'),&#10;    ('restaurant.enabled',    'false',    'Habilita el módulo de restaurante (mesas/URY-style)'),&#10;    ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')&#10;ON CONFLICT (key) DO NOTHING]&#10;(Background on this error at: https://sqlalche.me/e/20/f405)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802E030&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C70EF150&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C7F27890&gt;
+parameters = [{}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7226b10&gt;
+query = "el instalador los ajusta)\n-- -----------------------------------------------------------------------------\nINSERT I...    ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')\nON CONFLICT (key) DO NOTHING"
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at or near "el"
+E           LINE 1: el instalador los ajusta)
+E                   ^
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: SyntaxError
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802E030&gt;
+
+    def test_seed_sql_applies_and_is_idempotent(db):
+        script = DOCS_SEED_SQL.read_text(encoding="utf-8")
+        statements = [s.strip() for s in script.split(";") if s.strip()]
+        for _ in range(2):  # aplicarla dos veces no duplica nada
+            for stmt in statements:
+&gt;               db.execute(text(stmt))
+
+tests\test_integrity.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177c7226b10&gt;
+query = "el instalador los ajusta)\n-- -----------------------------------------------------------------------------\nINSERT I...    ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')\nON CONFLICT (key) DO NOTHING"
+params = {}, prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.ProgrammingError: (psycopg.errors.SyntaxError) syntax error at or near "el"
+E           LINE 1: el instalador los ajusta)
+E                   ^
+E           [SQL: el instalador los ajusta)
+E           -- -----------------------------------------------------------------------------
+E           INSERT INTO parameters (key, value, description) VALUES
+E               ('tickets.series',        '"A"',      'Serie de numeración de tickets por defecto'),
+E               ('invoices.series',       '"FAC"',    'Serie de numeración de facturas'),
+E               ('currency.decimals',     '2',        'Decimales de redondeo del importe'),
+E               ('restaurant.enabled',    'false',    'Habilita el módulo de restaurante (mesas/URY-style)'),
+E               ('kitchen.enabled',       'false',    'Habilita el pase de comandas a cocina (KDS)')
+E           ON CONFLICT (key) DO NOTHING]
+E           (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: ProgrammingError</failure></testcase><testcase classname="tests.test_panels_api" name="test_crud_panel_orden_y_auditoria" time="1.798"><failure message="AssertionError: assert ['catalog.pan...anel_deleted'] == ['catalog.pan...anel_deleted']&#10;  &#10;  At index 2 diff: 'catalog.panel_created' != 'catalog.panels_reordered'&#10;  Left contains one more item: 'catalog.panel_deleted'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802EA80&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDFCE0&gt;
+
+    def test_crud_panel_orden_y_auditoria(db, client):
+        h = _admin_headers(db, client)
+        assert _tree(client, h)["panels"] == []
+    
+        panel = _mk_panel(client, h, name="Cafetería", sort_order=1)
+        assert panel["name"] == "Cafetería" and panel["active"] is True
+    
+        patched = client.patch(f"{CAT}/panels/{panel['id']}", headers=h,
+                               json={"name": "Barras", "sort_order": 2})
+        assert patched.status_code == 200
+        assert patched.json() == {**panel, "name": "Barras", "sort_order": 2}
+    
+        other = _mk_panel(client, h, name="Vinos", sort_order=1)
+        reordered = client.post(f"{CAT}/panels/reorder", headers=h, json={"items": [
+            {"id": other["id"], "sort_order": 0}, {"id": panel["id"], "sort_order": 1},
+        ]})
+        assert reordered.status_code == 200
+        assert [p["name"] for p in reordered.json()["panels"]] == ["Vinos", "Barras"]
+    
+        missing = client.post(f"{CAT}/panels/reorder", headers=h, json={"items": [
+            {"id": str(uuid4()), "sort_order": 0},
+        ]})
+        assert missing.status_code == 404
+        assert missing.json()["code"] == "NOT_FOUND"
+    
+        deleted = client.delete(f"{CAT}/panels/{panel['id']}", headers=h)
+        assert deleted.status_code == 200 and deleted.json()["active"] is False
+        assert [p["name"] for p in _tree(client, h)["panels"]] == ["Vinos"]  # baja = fuera del árbol
+    
+&gt;       assert _catalog_actions(db) == [
+            "catalog.panel_created", "catalog.panel_updated",
+            "catalog.panels_reordered", "catalog.panel_deleted",
+        ]
+E       AssertionError: assert ['catalog.pan...anel_deleted'] == ['catalog.pan...anel_deleted']
+E         
+E         At index 2 diff: 'catalog.panel_created' != 'catalog.panels_reordered'
+E         Left contains one more item: 'catalog.panel_deleted'
+E         Use -v to get more diff
+
+tests\test_panels_api.py:176: AssertionError</failure></testcase><testcase classname="tests.test_panels_api" name="test_subpaneles" time="1.941" /><testcase classname="tests.test_panels_api" name="test_rejilla_put_snapshot_y_reemplazo" time="2.045"><failure message="AssertionError: assert 3 == 2&#10; +  where 3 = len([{'id': '930b611c-5cf6-4e46-8f7a-1c7ccf0d91ef', 'label': None, 'color': None, 'grid_row': 0, ...}, {'id': '58ce6175-93... 'grid_row': 0, ...}, {'id': '3e64d48c-2904-47e7-a85c-cb76499f500c', 'label': None, 'color': None, 'grid_row': 2, ...}])">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802F980&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDCF30&gt;
+
+    def test_rejilla_put_snapshot_y_reemplazo(db, client):
+        h = _admin_headers(db, client)
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        cafe = _mk_product(client, h, tax["id"], name="Café solo", price="1.50")
+        te = _mk_product(client, h, tax["id"], name="Té verde", price="2.10", short_name="Té")
+    
+        panel = _mk_panel(client, h)
+        sub = _mk_subpanel(client, h, panel["id"], name="Calientes")
+    
+        resp = _put_grid(client, h, panel["id"], [
+            {"product_id": cafe["id"], "grid_row": 0, "grid_col": 1,
+             "label": "Solo", "color": "#8b4513"},
+            {"product_id": te["id"], "subpanel_id": sub["id"], "grid_row": 1, "grid_col": 0},
+        ])
+        assert resp.status_code == 200, resp.text
+        tree_panel = resp.json()["panels"][0]
+    
+        # Botón directo del panel: posición, alternativa y producto embebido.
+        assert len(tree_panel["items"]) == 1
+        direct = tree_panel["items"][0]
+        assert (direct["grid_row"], direct["grid_col"]) == (0, 1)
+        assert direct["label"] == "Solo" and direct["color"] == "#8b4513"
+        assert direct["product"]["id"] == cafe["id"]
+        assert direct["product"]["price"] == "1.50"  # dinero string en el snapshot (§3)
+        assert direct["product"]["tax_code"] == "general"
+        assert direct["product"]["tax_rate"] == "21.00"
+        assert direct["product"]["weighable"] is False
+    
+        # Botón dentro del subpanel.
+        assert len(tree_panel["subpanels"][0]["items"]) == 1
+        assert tree_panel["subpanels"][0]["items"][0]["product"]["name"] == "Té verde"
+    
+        # Un segundo PUT reemplaza TODO el diseño: quita el del subpanel y mueve el otro.
+        resp2 = _put_grid(client, h, panel["id"], [
+            {"product_id": cafe["id"], "grid_row": 2, "grid_col": 2},
+            {"product_id": te["id"], "grid_row": 0, "grid_col": 0},
+        ])
+        assert resp2.status_code == 200
+        tree2 = resp2.json()["panels"][0]
+&gt;       assert len(tree2["items"]) == 2
+E       AssertionError: assert 3 == 2
+E        +  where 3 = len([{'id': '930b611c-5cf6-4e46-8f7a-1c7ccf0d91ef', 'label': None, 'color': None, 'grid_row': 0, ...}, {'id': '58ce6175-93... 'grid_row': 0, ...}, {'id': '3e64d48c-2904-47e7-a85c-cb76499f500c', 'label': None, 'color': None, 'grid_row': 2, ...}])
+
+tests\test_panels_api.py:266: AssertionError</failure></testcase><testcase classname="tests.test_panels_api" name="test_rejilla_validaciones_no_dejan_estado_a_medias" time="2.542" /><testcase classname="tests.test_panels_api" name="test_borrar_item_de_rejilla" time="1.965"><failure message="AssertionError: assert ['056a9431-a6...ec0fb8139ea9'] == ['52b8238a-32...ec0fb8139ea9']&#10;  &#10;  At index 0 diff: '056a9431-a603-49a5-a72e-b732befe0b22' != '52b8238a-32ab-46b4-9289-ec0fb8139ea9'&#10;  Left contains one more item: '52b8238a-32ab-46b4-9289-ec0fb8139ea9'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802DF40&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6D42CF0&gt;
+
+    def test_borrar_item_de_rejilla(db, client):
+        h = _admin_headers(db, client)
+        tax = client.post(f"{CAT}/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        cafe = _mk_product(client, h, tax["id"])
+        te = _mk_product(client, h, tax["id"], name="Té")
+        panel = _mk_panel(client, h)
+    
+        tree = _put_grid(client, h, panel["id"], [
+            {"product_id": cafe["id"], "grid_row": 0, "grid_col": 0},
+            {"product_id": te["id"], "grid_row": 0, "grid_col": 1},
+        ]).json()
+        item_ids = [i["id"] for i in tree["panels"][0]["items"]]
+    
+        removed = client.delete(f"{CAT}/panel-items/{item_ids[0]}", headers=h)
+        assert removed.status_code == 204
+        remaining = _tree(client, h)["panels"][0]["items"]
+&gt;       assert [i["id"] for i in remaining] == [item_ids[1]]
+E       AssertionError: assert ['056a9431-a6...ec0fb8139ea9'] == ['52b8238a-32...ec0fb8139ea9']
+E         
+E         At index 0 diff: '056a9431-a603-49a5-a72e-b732befe0b22' != '52b8238a-32ab-46b4-9289-ec0fb8139ea9'
+E         Left contains one more item: '52b8238a-32ab-46b4-9289-ec0fb8139ea9'
+E         Use -v to get more diff
+
+tests\test_panels_api.py:351: AssertionError</failure></testcase><testcase classname="tests.test_panels_api" name="test_producto_inactivo_desaparece_de_la_rejilla" time="1.855" /><testcase classname="tests.test_panels_api" name="test_permisos_paneles" time="1.305" /><testcase classname="tests.test_payments_api" name="test_formas_de_pago_configurables" time="2.149"><failure message="KeyError: 'items'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802C050&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDEE00&gt;
+
+    def test_formas_de_pago_configurables(db, client):
+        h = _sales_headers(db, client, perms=("products.view", "admin.parameters"),
+                           username="gestor")
+        seller = _sales_headers(db, client, perms=("sales.sell",), username="vendedor")
+    
+        created = client.post(f"{ADMIN}/payment-methods", headers=h, json={
+            "code": "VOUCHER", "name": "Vale de comida", "kind": "voucher",
+            "opens_drawer": False, "sort_order": 5,
+        })
+        assert created.status_code == 201, created.text
+        method = created.json()
+        assert (method["code"], method["name"], method["kind"]) == ("VOUCHER", "Vale de comida", "voucher")
+        assert (method["opens_drawer"], method["sort_order"], method["active"]) == (False, 5, True)
+    
+        # Código duplicado → 409.
+        dup = client.post(f"{ADMIN}/payment-methods", headers=h, json={
+            "code": "VOUCHER", "name": "Otro vale", "kind": "voucher"})
+        assert dup.status_code == 409 and dup.json()["code"] == "CONFLICT"
+    
+        patched = client.patch(f"{ADMIN}/payment-methods/{method['id']}", headers=h,
+                               json={"name": "Vale restaurante", "opens_drawer": True})
+        assert patched.status_code == 200
+        assert patched.json()["name"] == "Vale restaurante"
+        assert (patched.json()["code"], patched.json()["opens_drawer"]) == ("VOUCHER", True)
+    
+        # Lectura: es operación de venta (sales.sell), sin admin.parameters.
+        listed = client.get(f"{ADMIN}/payment-methods", headers=seller)
+        assert listed.status_code == 200
+        assert [m["code"] for m in listed.json()["items"]] == ["VOUCHER"]
+    
+        # Baja lógica: fuera del listado activo, visible con include_inactive.
+        assert client.delete(f"{ADMIN}/payment-methods/{method['id']}", headers=h).status_code == 204
+&gt;       assert client.get(f"{ADMIN}/payment-methods", headers=h).json()["items"] == []
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'items'
+
+tests\test_payments_api.py:230: KeyError</failure></testcase><testcase classname="tests.test_payments_api" name="test_pago_exacto" time="1.825" /><testcase classname="tests.test_payments_api" name="test_pago_superior_devuelve_cambio" time="1.825"><failure message="AssertionError: assert '0.10' == '10.00'&#10;  &#10;  - 10.00&#10;  + 0.10">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C7024B90&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6FDD150&gt;
+
+    def test_pago_superior_devuelve_cambio(db, client):
+        h = _sales_headers(db, client)
+        _, cash, cash_method, order, _ = _escenario(db, client, h)
+    
+        closed = _close(client, h, order["id"], cash, [_pay(cash_method, "3.00", "10.00")])
+        assert closed["total_amount"] == "3.00"   # el total no se infla con lo entregado
+        assert closed["change_total"] == "7.00"
+        [payment] = closed["payments"]
+        assert payment["amount"] == "3.00"
+    
+        payload = db.execute(text("SELECT payload FROM sale_events")).scalar_one()
+        assert payload["change_total"] == "7.00"
+&gt;       assert payload["payments"][0]["tendered"] == "10.00"
+E       AssertionError: assert '0.10' == '10.00'
+E         
+E         - 10.00
+E         + 0.10
+
+tests\test_payments_api.py:286: AssertionError</failure></testcase><testcase classname="tests.test_payments_api" name="test_pago_parcial_rechazado_y_sin_efectos" time="1.877" /><testcase classname="tests.test_payments_api" name="test_pago_mixto" time="1.781" /><testcase classname="tests.test_payments_api" name="test_exceso_sin_efectivo_rechazado" time="1.689" /><testcase classname="tests.test_payments_api" name="test_entregado_invalido_rechazado" time="1.723" /><testcase classname="tests.test_payments_api" name="test_forma_de_pago_desconocida_o_inactiva" time="1.748" /><testcase classname="tests.test_payments_api" name="test_pago_duplicado_rechazado" time="1.982" /><testcase classname="tests.test_payments_api" name="test_pago_concurrente_un_solo_ganador" time="1.767" /><testcase classname="tests.test_payments_api" name="test_devolucion_con_pagos" time="2.026"><failure message="AssertionError: assert ['2.00', '1.00'] == ['1.00', '2.00']&#10;  &#10;  At index 0 diff: '2.00' != '1.00'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6960410&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C9BC18C0&gt;
+
+    def test_devolucion_con_pagos(db, client):
+        h = _sales_headers(db, client)
+        _, cash, cash_method, order, line = _escenario(db, client, h)
+        card_method = _mk_payment_method(db, code="CARD", name="Tarjeta", kind="card")
+        _close(client, h, order["id"], cash,
+               [_pay(cash_method, "1.00", "2.00"), _pay(card_method, "2.00")])
+    
+        refund = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "Cambio de opinión",
+            "lines": [{"line_id": line["id"], "quantity": "2"}],
+            "payments": [_pay(cash_method, "1.00"), _pay(card_method, "2.00")],
+        })
+        assert refund.status_code == 201, refund.text
+        assert refund.json()["total_amount"] == "-3.00"
+    
+        # Lo devuelto queda como pagos positivos en la orden negativa.
+        returned = db.execute(
+            text(
+                "SELECT p.amount FROM payments p JOIN orders o ON o.id = p.order_id "
+                "WHERE o.total_amount &lt; 0 ORDER BY p.id"
+            )
+        ).scalars().all()
+&gt;       assert [format(a, "f") for a in returned] == ["1.00", "2.00"]
+E       AssertionError: assert ['2.00', '1.00'] == ['1.00', '2.00']
+E         
+E         At index 0 diff: '2.00' != '1.00'
+E         Use -v to get more diff
+
+tests\test_payments_api.py:476: AssertionError</failure></testcase><testcase classname="tests.test_payments_api" name="test_devolucion_rechaza_desajuste_y_entregado" time="2.129" /><testcase classname="tests.test_payments_api" name="test_permisos_de_cobro" time="1.666" /><testcase classname="tests.test_payments_domain" name="test_pago_exacto" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_pago_superior_entrega_cambio" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_pago_mixto" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_varios_efectivos_suman_sus_cambios" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_pago_parcial_insuficiente" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_exceso_sin_efectivo" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_entregado_solo_en_efectivo" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_entregado_menor_que_importe" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_importe_no_positivo" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_total_no_positivo" time="0.001" /><testcase classname="tests.test_payments_domain" name="test_sin_pagos" time="0.001" /><testcase classname="tests.test_printing_api" name="test_crud_de_impresoras_red_y_agente" time="2.751" /><testcase classname="tests.test_printing_api" name="test_job_de_prueba_y_ciclo_de_cola" time="1.521"><failure message="AssertionError: assert [(UUID('27d8e...206500f81c'))] == [('27d8e828-2...4206500f81c')]&#10;  &#10;  At index 0 diff: (UUID('27d8e828-23ca-4366-b585-369df51e14ee'), UUID('4fd92d3e-e816-4cb8-b6f2-54206500f81c')) != ('27d8e828-23ca-4366-b585-369df51e14ee', '4fd92d3e-e816-4cb8-b6f2-54206500f81c')&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D9BC50&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CA1EDE10&gt;
+adapter = &lt;app.adapters.printing.NullPrinterAdapter object at 0x00000177C95BFF20&gt;
+
+    def test_job_de_prueba_y_ciclo_de_cola(db, client, adapter):
+        h = _headers(db, client)
+        printer = _mk_printer(client, h)
+    
+        job = _mk_test_job(client, h, printer["id"])
+        assert job["kind"] == "test"
+        assert job["status"] == "queued"
+        assert job["attempts"] == 0
+        assert job["payload"]["printer"] == printer["name"]
+        assert "printing.test_enqueued" in _audit_actions(db)
+    
+        listing = client.get(f"{PRINT}/jobs", headers=h,
+                             params={"status": "queued"}).json()["items"]
+        assert [j["id"] for j in listing] == [job["id"]]
+    
+        results = _dispatch(client, h)
+        assert len(results) == 1
+        assert results[0]["status"] == "sent"
+        assert results[0]["attempts"] == 1
+        # El adaptador NullPrinterAdapter registró la entrega física.
+&gt;       assert [(d["job_id"], d["printer_id"]) for d in adapter.deliveries] == \
+            [(job["id"], printer["id"])]
+E       AssertionError: assert [(UUID('27d8e...206500f81c'))] == [('27d8e828-2...4206500f81c')]
+E         
+E         At index 0 diff: (UUID('27d8e828-23ca-4366-b585-369df51e14ee'), UUID('4fd92d3e-e816-4cb8-b6f2-54206500f81c')) != ('27d8e828-23ca-4366-b585-369df51e14ee', '4fd92d3e-e816-4cb8-b6f2-54206500f81c')
+E         Use -v to get more diff
+
+tests\test_printing_api.py:394: AssertionError</failure></testcase><testcase classname="tests.test_printing_api" name="test_reintentos_controlados_con_backoff" time="2.176" /><testcase classname="tests.test_printing_api" name="test_cancelacion_de_jobs" time="2.315" /><testcase classname="tests.test_printing_api" name="test_el_cobro_encola_el_ticket_con_dedupe" time="2.290" /><testcase classname="tests.test_printing_api" name="test_sin_impresora_configurada_el_cobro_no_rompe" time="1.876" /><testcase classname="tests.test_printing_api" name="test_copia_de_ticket_reenvia_el_payload_congelado" time="2.135"><failure message="KeyError: 'payload'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6AC63F0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C82D6690&gt;
+adapter = &lt;app.adapters.printing.NullPrinterAdapter object at 0x00000177C9FE4500&gt;
+
+    def test_copia_de_ticket_reenvia_el_payload_congelado(db, client, adapter):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        _mk_printer(client, h, name="Tickets")
+    
+        order, _, closed = _sale(client, h, db, terminal, method)
+        ticket_id = closed["ticket"]["id"]
+        _dispatch(client, h)  # el original ya salió; la copia es un job NUEVO
+    
+        resp = client.post(f"{PRINT}/copies/tickets/{ticket_id}", headers=h)
+        assert resp.status_code == 201, resp.text
+        copy = resp.json()
+        assert copy["kind"] == "ticket"
+        assert copy["dedupe_key"] is None  # cada copia es un trabajo nuevo
+        assert copy["status"] == "queued"
+        assert copy["payload"]["doc_number"] == closed["ticket"]["doc_number"]
+&gt;       assert copy["payload"] == closed["ticket"]["payload"]  # congelado, no regenerado
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'payload'
+
+tests\test_printing_api.py:572: KeyError</failure></testcase><testcase classname="tests.test_printing_api" name="test_copia_de_factura_y_reglas" time="2.476" /><testcase classname="tests.test_printing_api" name="test_permisos_de_impresion" time="1.630"><failure message="TypeError: TestClient.get() got an unexpected keyword argument 'json'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6962300&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CA17A690&gt;
+
+    def test_permisos_de_impresion(db, client):
+        boss = _headers(db, client, username="jefe")
+        waiter = _headers(db, client, perms=WAITER_PERMS, username="camarero")
+        printer = _mk_printer(client, boss, name="Tickets")
+    
+        # Sin admin.printers no se ve ni se mueve la cola ni se administran impresoras.
+        for method, url in (
+            ("get", PRINTERS), ("post", PRINTERS),
+            ("get", f"{PRINT}/jobs"), ("post", f"{PRINT}/dispatch"),
+            ("post", f"{PRINTERS}/{printer['id']}/test"),
+            ("patch", f"{PRINTERS}/{printer['id']}"), ("delete", f"{PRINTERS}/{printer['id']}"),
+        ):
+&gt;           resp = getattr(client, method)(url, headers=waiter, json={})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: TestClient.get() got an unexpected keyword argument 'json'
+
+tests\test_printing_api.py:631: TypeError</failure></testcase><testcase classname="tests.test_printing_domain" name="test_thermal_width_px_por_columnas" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_thermal_width_px_desconocido_usa_80mm" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_retry_delay_seconds_backoff_con_tope" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_retry_due_inmediato_si_nunca_se_envio" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_retry_due_respeta_el_backoff" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_split_data_uri_valida_redondea_a_bytes" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_split_data_uri_invalidas_devuelven_none" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_image_dimensions_png" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_image_dimensions_jpeg" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_image_dimensions_desconocido_o_truncado" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_fit_to_width_no_amplia" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_fit_to_width_reduce_respetando_proporcion" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_fit_to_width_altura_minima_un_pixel" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_fit_to_width_entradas_invalidas" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_header_logo_ajusta_al_ancho_de_cada_impresora" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_header_logo_que_ya_cabe_no_se_toca" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_header_logo_jpeg" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_header_logo_sin_logo_o_roto_devuelve_none" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_printer_kind_for_job" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_can_transition_flujo_normal" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_can_transition_terminales_y_saltos_ilegales" time="0.001" /><testcase classname="tests.test_printing_domain" name="test_max_attempts_y_politica_controlada" time="0.001" /><testcase classname="tests.test_reports_api" name="test_tickets_listado_con_total_y_numero_de_documento" time="2.442"><failure message="AssertionError: assert ('2026-09-13T17:00:32.218345Z' is None)">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C8184F50&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C82D7BD0&gt;
+
+    def test_tickets_listado_con_total_y_numero_de_documento(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        _, p1, _ = _tax_and_products(client, h)
+        cash = _cash_session_id(client, h, terminal)
+    
+        order = _mk_order(client, h, terminal)
+        _add_line(client, h, order["id"], p1["id"], quantity="2")
+        _close_sale(client, h, order["id"], cash, [_pay(method, "2.20")])
+    
+        resp = _get(client, h, "tickets", _window())
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["total"] == 1 and len(body["items"]) == 1
+        ticket = body["items"][0]
+        assert ticket["order_id"] == order["id"]
+        assert ticket["terminal_id"] == terminal
+        assert ticket["doc_number"]  # extraído en SQL del payload congelado
+        assert ticket["series"] and ticket["number"] == 1
+        assert Decimal(ticket["total_amount"]) == Decimal("2.20")
+&gt;       assert ticket["printed_at"] is None and ticket["reprint_count"] == 0
+E       AssertionError: assert ('2026-09-13T17:00:32.218345Z' is None)
+
+tests\test_reports_api.py:274: AssertionError</failure></testcase><testcase classname="tests.test_reports_api" name="test_tickets_requiere_rango_acotado" time="1.438" /><testcase classname="tests.test_reports_api" name="test_informes_sin_permiso_403" time="1.231" /><testcase classname="tests.test_reports_api" name="test_facturas_listado_y_detalle" time="2.698" /><testcase classname="tests.test_reports_api" name="test_cierres_pasados_con_cuadre_congelado" time="2.004"><failure message="AssertionError: {&quot;type&quot;:&quot;urn:tpv:error:PERMISSION_DENIED&quot;,&quot;title&quot;:&quot;Forbidden&quot;,&quot;status&quot;:403,&quot;detail&quot;:&quot;Falta el permiso requerido: cash.close&quot;,&quot;code&quot;:&quot;PERMISSION_DENIED&quot;}&#10;assert 403 == 200&#10; +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6BDE5D0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CA039040&gt;
+
+    def test_cierres_pasados_con_cuadre_congelado(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        _, p1, _ = _tax_and_products(client, h)
+    
+        session = _open(client, h, terminal)  # fondo 50.00
+        order = _mk_order(client, h, terminal)
+        _add_line(client, h, order["id"], p1["id"], quantity="2")
+        _close_sale(client, h, order["id"], session["id"], [_pay(method, "2.20")])
+    
+        # Cierre Z contando 52.20 exacto → diferencia cero, congelada en la fila.
+        closed = client.post(f"{CASH}/sessions/{session['id']}/close", headers=h, json={
+            "lines": [{"denomination": "5000", "quantity": 1},
+                      {"denomination": "200", "quantity": 1},
+                      {"denomination": "20", "quantity": 1}],
+        })
+&gt;       assert closed.status_code == 200, closed.text
+E       AssertionError: {"type":"urn:tpv:error:PERMISSION_DENIED","title":"Forbidden","status":403,"detail":"Falta el permiso requerido: cash.close","code":"PERMISSION_DENIED"}
+E       assert 403 == 200
+E        +  where 403 = &lt;Response [403 Forbidden]&gt;.status_code
+
+tests\test_reports_api.py:391: AssertionError</failure></testcase><testcase classname="tests.test_reports_api" name="test_resumen_del_periodo_con_desglose_de_iva" time="3.018"><failure message="AssertionError: assert Decimal('330') == Decimal('3.30')&#10; +  where Decimal('330') = Decimal('330')&#10; +  and   Decimal('3.30') = Decimal('3.30')">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D999A0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CA0399D0&gt;
+
+    def test_resumen_del_periodo_con_desglose_de_iva(db, client):
+        h = _headers(db, client)
+        _escenario_completo(db, client, h)
+    
+        resp = _get(client, h, "stats/summary", _window())
+        assert resp.status_code == 200, resp.text
+        s = resp.json()
+        assert s["sales_count"] == 2
+        assert Decimal(s["sales_amount"]) == Decimal("4.40")
+        assert s["refunds_count"] == 1
+        assert Decimal(s["refunds_amount"]) == Decimal("-1.10")
+        assert s["voided_count"] == 1
+&gt;       assert Decimal(s["net_amount"]) == Decimal("3.30")
+E       AssertionError: assert Decimal('330') == Decimal('3.30')
+E        +  where Decimal('330') = Decimal('330')
+E        +  and   Decimal('3.30') = Decimal('3.30')
+
+tests\test_reports_api.py:451: AssertionError</failure></testcase><testcase classname="tests.test_reports_api" name="test_estadistica_por_producto_netando_devoluciones" time="2.792" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_categoria_sin_categoria" time="2.772" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_camarero" time="2.890" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_forma_de_pago" time="2.731" /><testcase classname="tests.test_reports_api" name="test_estadistica_por_periodo_por_dias_y_horas" time="2.995" /><testcase classname="tests.test_reports_api" name="test_paginacion_de_informes" time="3.004" /><testcase classname="tests.test_reports_domain.TestBoundedRange" name="test_rango_valido_se_devuelve_intacto" time="0.002" /><testcase classname="tests.test_reports_domain.TestBoundedRange" name="test_instante_unico_es_valido" time="0.001" /><testcase classname="tests.test_reports_domain.TestBoundedRange" name="test_hasta_anterior_a_desde_es_error" time="0.002" /><testcase classname="tests.test_reports_domain.TestBoundedRange" name="test_techo_de_max_days" time="0.002" /><testcase classname="tests.test_reports_domain.TestBoundedRange" name="test_techo_personalizado" time="0.002" /><testcase classname="tests.test_reports_domain.TestNetCents" name="test_ventas_menos_devoluciones" time="0.001" /><testcase classname="tests.test_reports_domain.TestNetCents" name="test_sin_devoluciones" time="0.001" /><testcase classname="tests.test_reports_domain.TestNetCents" name="test_importes_negativos_son_error" time="0.001" /><testcase classname="tests.test_reports_domain.TestAverageTicket" name="test_division_exacta" time="0.001" /><testcase classname="tests.test_reports_domain.TestAverageTicket" name="test_redondeo_half_up" time="0.001" /><testcase classname="tests.test_reports_domain.TestAverageTicket" name="test_sin_operaciones_el_ticket_medio_es_cero" time="0.001" /><testcase classname="tests.test_reports_domain.TestAverageTicket" name="test_operaciones_negativas_son_error" time="0.001" /><testcase classname="tests.test_sales_api" name="test_ciclo_completo_de_venta" time="1.882"><failure message="AssertionError: assert ('8.18', '9.00') == ('8.10', '9.00')&#10;  &#10;  At index 0 diff: '8.18' != '8.10'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6BDC230&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CA687790&gt;
+
+    def test_ciclo_completo_de_venta(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+        _, cafe = _tax_and_product(client, h)
+    
+        order = _mk_order(client, h, terminal)
+        assert order["status"] == "draft"
+        assert order["total_amount"] is None  # draft sin totales (ck_orders_draft_no_totals)
+    
+        # Línea de catálogo: snapshot 2 × 1.50 con IVA 21 % incluido.
+        line = _add_line(client, h, order["id"], {
+            "product_id": cafe["id"], "quantity": "2",
+        })
+        assert line["name"] == "Café solo"
+        assert line["unit_price"] == "1.50" and line["tax_rate"] == "21.00"
+        assert line["quantity"] == "2.000"
+        assert (line["base"], line["total"]) == ("2.48", "3.00")  # 3.00 / 1.21 = 2.4793… → 2.48
+    
+        # Artículo libre con descuento: 10.00 al 10 % → 9.00 (base 8.10 + 0.90 de 10 %).
+        free = _add_line(client, h, order["id"], {
+            "name": "Copa aparte", "unit_price": "10.00", "tax_rate": "10.00",
+            "quantity": "1", "discount_pct": "10.00",
+        })
+&gt;       assert (free["base"], free["total"]) == ("8.10", "9.00")
+E       AssertionError: assert ('8.18', '9.00') == ('8.10', '9.00')
+E         
+E         At index 0 diff: '8.18' != '8.10'
+E         Use -v to get more diff
+
+tests\test_sales_api.py:236: AssertionError</failure></testcase><testcase classname="tests.test_sales_api" name="test_guardas_de_cierre" time="1.252"><failure message="sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation &quot;cash_sessions&quot; violates check constraint &quot;ck_cash_sessions_order&quot;&#10;DETAIL:  Failing row contains (80e14453-b5f9-4b50-a99c-00eb08b30d18, 040d6714-bce6-4471-85bc-2ebff5276d4e, 9dd6e06e-32c3-4dff-9942-406550f864d9, null, 50.00, 40.00, 40.00, 0.00, 2026-09-13 17:01:03.304228+00, 2026-09-13 17:01:03.304228+00).&#10;[SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id]&#10;[parameters: {'t': '040d6714-bce6-4471-85bc-2ebff5276d4e', 'u': '9dd6e06e-32c3-4dff-9942-406550f864d9'}]&#10;(Background on this error at: https://sqlalche.me/e/20/gkpj)">self = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D994F0&gt;
+dialect = &lt;sqlalchemy.dialects.postgresql.psycopg.PGDialect_psycopg object at 0x00000177C4DF0050&gt;
+context = &lt;sqlalchemy.dialects.postgresql.psycopg.PGExecutionContext_psycopg object at 0x00000177C7647150&gt;
+statement = &lt;sqlalchemy.dialects.postgresql.psycopg.PGCompiler_psycopg object at 0x00000177C6C00E10&gt;
+parameters = [{'t': '040d6714-bce6-4471-85bc-2ebff5276d4e', 'u': '9dd6e06e-32c3-4dff-9942-406550f864d9'}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -&gt; CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+&gt;                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177caa16210&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id'
+params = {'t': '040d6714-bce6-4471-85bc-2ebff5276d4e', 'u': '9dd6e06e-32c3-4dff-9942-406550f864d9'}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           psycopg.errors.CheckViolation: new row for relation "cash_sessions" violates check constraint "ck_cash_sessions_order"
+E           DETAIL:  Failing row contains (80e14453-b5f9-4b50-a99c-00eb08b30d18, 040d6714-bce6-4471-85bc-2ebff5276d4e, 9dd6e06e-32c3-4dff-9942-406550f864d9, null, 50.00, 40.00, 40.00, 0.00, 2026-09-13 17:01:03.304228+00, 2026-09-13 17:01:03.304228+00).
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: CheckViolation
+
+The above exception was the direct cause of the following exception:
+
+db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C6D994F0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177C6D42CF0&gt;
+
+    def test_guardas_de_cierre(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        other_terminal = _mk_terminal(db, code="T2")
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+&gt;       closed_cash = _mk_cash_session(db, terminal, str(user_id), closed=True)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_sales_api.py:306: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_sales_api.py:124: in _mk_cash_session
+    return str(db.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: in do_execute
+    cursor.execute(statement, parameters)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;psycopg.Cursor [closed] [IDLE] (host=127.0.0.1 port=55432 user=tpv database=tpv_test) at 0x177caa16210&gt;
+query = 'INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id'
+params = {'t': '040d6714-bce6-4471-85bc-2ebff5276d4e', 'u': '9dd6e06e-32c3-4dff-9942-406550f864d9'}
+prepare = None, binary = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool | None = None,
+    ) -&gt; Self:
+        """
+        Execute a query or command to the database.
+        """
+        try:
+            with self._conn.lock:
+                self._conn.wait(
+                    self._execute_gen(query, params, prepare=prepare, binary=binary)
+                )
+        except e._NO_TRACEBACK as ex:
+&gt;           raise ex.with_traceback(None)
+E           sqlalchemy.exc.IntegrityError: (psycopg.errors.CheckViolation) new row for relation "cash_sessions" violates check constraint "ck_cash_sessions_order"
+E           DETAIL:  Failing row contains (80e14453-b5f9-4b50-a99c-00eb08b30d18, 040d6714-bce6-4471-85bc-2ebff5276d4e, 9dd6e06e-32c3-4dff-9942-406550f864d9, null, 50.00, 40.00, 40.00, 0.00, 2026-09-13 17:01:03.304228+00, 2026-09-13 17:01:03.304228+00).
+E           [SQL: INSERT INTO cash_sessions (terminal_id, opened_by, opening_amount, closed_at, expected_amount, counted_amount, difference) VALUES (%(t)s, %(u)s, 50.00, NOW(), 40.00, 40.00, 0.00) RETURNING id]
+E           [parameters: {'t': '040d6714-bce6-4471-85bc-2ebff5276d4e', 'u': '9dd6e06e-32c3-4dff-9942-406550f864d9'}]
+E           (Background on this error at: https://sqlalche.me/e/20/gkpj)
+
+.venv\Lib\site-packages\psycopg\cursor.py:117: IntegrityError</failure></testcase><testcase classname="tests.test_sales_api" name="test_anular_borrador_y_borrador_cobrado" time="2.168"><failure message="AssertionError: assert ['sale_voided...'sale_voided'] == ['sale_closed', 'sale_voided']&#10;  &#10;  At index 0 diff: 'sale_voided' != 'sale_closed'&#10;  Left contains one more item: 'sale_voided'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C9A36120&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CA84A8B0&gt;
+
+    def test_anular_borrador_y_borrador_cobrado(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+        _, cafe = _tax_and_product(client, h)
+    
+        draft = _mk_order(client, h, terminal)
+        _add_line(client, h, draft["id"], {"product_id": cafe["id"], "quantity": "1"})
+    
+        voided = client.post(f"{SALES}/orders/{draft['id']}/void", headers=h,
+                             json={"reason": "Cliente se fue"})
+        assert voided.status_code == 200
+        body = voided.json()
+        assert body["status"] == "voided" and body["void_reason"] == "Cliente se fue"
+        assert body["total_amount"] is None  # el draft nunca tuvo totales
+        assert body["voided_at"] is not None
+    
+        again = client.post(f"{SALES}/orders/{draft['id']}/void", headers=h,
+                            json={"reason": "Otra vez"})
+        assert again.status_code == 409 and again.json()["code"] == "CONFLICT"
+    
+        # Un cobrado también se anula, conservando sus totales (nunca se borra).
+        paid = _mk_order(client, h, terminal)
+        _add_line(client, h, paid["id"], {"product_id": cafe["id"], "quantity": "2"})
+        _close(client, h, paid["id"], cash, [_pay(cash_method, "3.00")])
+        voided_paid = client.post(f"{SALES}/orders/{paid['id']}/void", headers=h,
+                                  json={"reason": "Error de caja"}).json()
+        assert voided_paid["status"] == "voided"
+        assert voided_paid["total_amount"] == "3.00"  # totales conservados
+    
+        event_types = [t for t, _ in _sale_events(db)]
+&gt;       assert event_types == ["sale_closed", "sale_voided"]
+E       AssertionError: assert ['sale_voided...'sale_voided'] == ['sale_closed', 'sale_voided']
+E         
+E         At index 0 diff: 'sale_voided' != 'sale_closed'
+E         Left contains one more item: 'sale_voided'
+E         Use -v to get more diff
+
+tests\test_sales_api.py:389: AssertionError</failure></testcase><testcase classname="tests.test_sales_api" name="test_devolucion" time="2.500" /><testcase classname="tests.test_sales_api" name="test_descuento_requiere_permiso" time="2.318" /><testcase classname="tests.test_sales_api" name="test_una_comanda_abierta_por_mesa" time="2.075" /><testcase classname="tests.test_sales_api" name="test_permisos_de_venta" time="1.965" /><testcase classname="tests.test_sales_domain" name="test_rejilla_exhaustiva_con_oraculo_decimal" time="0.045" /><testcase classname="tests.test_sales_domain" name="test_redondeo_half_up" time="0.001" /><testcase classname="tests.test_sales_domain" name="test_conversiones_exactas" time="0.001" /><testcase classname="tests.test_sales_domain" name="test_cantidad_cero_rechazada" time="0.001" /><testcase classname="tests.test_sales_domain" name="test_descuento_fuera_de_rango_rechazado" time="0.001" /><testcase classname="tests.test_sales_domain" name="test_descuento_100_anula_el_importe_pero_no_la_base_de_otros" time="0.001" /><testcase classname="tests.test_sales_domain" name="test_devolucion_es_el_negativo_exacto" time="0.027" /><testcase classname="tests.test_sales_domain" name="test_totales_aditivos_con_varios_tipos" time="0.001" /><testcase classname="tests.test_sales_domain" name="test_totales_con_devoluciones_se_compensan" time="0.001" /><testcase classname="tests.test_security" name="test_hash_es_argon2id_y_verifica" time="0.261" /><testcase classname="tests.test_security" name="test_hash_rechaza_clave_equivocada_y_hash_basura" time="0.239" /><testcase classname="tests.test_security" name="test_verify_dummy_no_reventar" time="0.124" /><testcase classname="tests.test_security" name="test_access_token_ida_y_vuelta" time="0.001" /><testcase classname="tests.test_security" name="test_access_token_expirado_rechazado" time="0.001" /><testcase classname="tests.test_security" name="test_access_token_con_firma_alterada_rechazado" time="0.001" /><testcase classname="tests.test_security" name="test_access_token_con_otro_secreto_rechazado" time="0.002" /><testcase classname="tests.test_security" name="test_sin_secreto_o_corto_falla_claro" time="0.004" /><testcase classname="tests.test_security" name="test_refresh_unico_y_hash_determinista" time="0.001" /><testcase classname="tests.test_security" name="test_rate_limiter_bloquea_al_superar_intentos" time="0.001" /><testcase classname="tests.test_security" name="test_rate_limiter_recupera_al_pasar_la_ventana" time="0.001" /><testcase classname="tests.test_static_frontend" name="test_sin_carpetas_configuradas_solo_api" time="0.002" /><testcase classname="tests.test_static_frontend" name="test_mostrador_movil_y_admin_sirven_index_y_assets" time="0.358" /><testcase classname="tests.test_static_frontend" name="test_carpeta_inexistente_falla_al_arrancar" time="0.005" /><testcase classname="tests.test_ws_api" name="test_sin_auth_o_token_invalido_cierra_4401" time="1.272" /><testcase classname="tests.test_ws_api" name="test_sesion_revocada_cierra_4401" time="1.484" /><testcase classname="tests.test_ws_api" name="test_primer_frame_sin_auth_cierra_4400" time="0.016" /><testcase classname="tests.test_ws_api" name="test_suscripcion_recibe_los_eventos_de_venta_en_vivo" time="2.149" /><testcase classname="tests.test_ws_api" name="test_frame_desconocido_responde_error_y_la_conexion_sigue" time="2.466" /><testcase classname="tests.test_ws_api" name="test_unsubscribe_deja_de_entregar" time="2.480" /><testcase classname="tests.test_ws_api" name="test_temas_sin_permiso_van_a_denied_y_el_resto_funciona" time="1.477" /><testcase classname="tests.test_ws_api" name="test_system_esta_abierto_a_cualquier_autenticado" time="1.430" /><testcase classname="tests.test_ws_api" name="test_replay_desde_since_id_y_continuidad_del_cursor" time="2.365"><failure message="KeyError: 'id'">db = &lt;sqlalchemy.engine.base.Connection object at 0x00000177C802CC80&gt;
+client = &lt;starlette.testclient.TestClient object at 0x00000177CB5B5260&gt;
+
+    def test_replay_desde_since_id_y_continuidad_del_cursor(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        token = _login(client).json()["access_token"]
+    
+        order, _, _ = _sale(client, h, terminal, method)  # created + updated + closed
+    
+        with _connect(client, token) as ws:
+            ws.send_json({"type": "subscribe", "topics": ["sales"], "since_id": 0})
+            # Llegan primero los eventos históricos y al final el ``subscribed``.
+            replayed = []
+            while True:
+                frame = ws.receive_json()
+                if frame["type"] == "subscribed":
+                    summary = frame
+                    break
+                assert frame["type"] == "event"
+                replayed.append(frame["event"])
+    
+            assert [ev["type"] for ev in replayed] == [
+                "sales.created", "sales.updated", "sales.closed",
+            ]
+            assert all(ev["payload"]["order_id"] == order["id"] for ev in replayed)
+            assert summary["topics"] == ["sales"] and summary["denied"] == []
+            assert summary["replayed"] == 3
+            assert summary["cursor"] == replayed[-1]["id"]
+    
+            # El cursor queda a la altura del log: lo nuevo llega en vivo, sin hueco.
+&gt;           order2, _, _ = _sale(client, h, terminal, method)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_ws_api.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_ws_api.py:195: in _sale
+    _, product = _tax_and_product(client, h)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+client = &lt;starlette.testclient.TestClient object at 0x00000177CB5B5260&gt;
+h = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMzA1M2ZiMi04MTlhLTRlOGItODFiNi0yMDZkZjczY2Q...plcm8iLCJzY29wZSI6ImZ1bGwiLCJpYXQiOjE3ODkzMTg4ODksImV4cCI6MTc4OTMxOTc4OX0.maq7j0vin5MjTSTv5sabwEU3Fv76jTp7nEJeNF9AImM'}
+name = 'Café solo', price = '1.50'
+
+    def _tax_and_product(client, h, *, name="Café solo", price="1.50") -&gt; tuple[dict, dict]:
+        tax = client.post(f"{V1}/catalog/tax-rates", headers=h, json={
+            "code": "general", "name": "IVA general", "rate": "21.00", "valid_from": "2026-01-01",
+        }).json()
+        product = client.post(f"{V1}/catalog/products", headers=h, json={
+&gt;           "name": name, "tax_rate_id": tax["id"], "price": price,
+                                         ^^^^^^^^^
+        }).json()
+E       KeyError: 'id'
+
+tests\test_ws_api.py:144: KeyError</failure></testcase></testsuite></testsuites>

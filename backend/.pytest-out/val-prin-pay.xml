@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="22" time="47.751" timestamp="2026-09-13T19:33:03.412616+02:00" hostname="DESKTZEN"><testcase classname="tests.test_printing_api" name="test_crud_de_impresoras_red_y_agente" time="3.246" /><testcase classname="tests.test_printing_api" name="test_job_de_prueba_y_ciclo_de_cola" time="1.744" /><testcase classname="tests.test_printing_api" name="test_reintentos_controlados_con_backoff" time="2.355" /><testcase classname="tests.test_printing_api" name="test_cancelacion_de_jobs" time="2.462" /><testcase classname="tests.test_printing_api" name="test_el_cobro_encola_el_ticket_con_dedupe" time="2.415" /><testcase classname="tests.test_printing_api" name="test_sin_impresora_configurada_el_cobro_no_rompe" time="1.953" /><testcase classname="tests.test_printing_api" name="test_copia_de_ticket_reenvia_el_payload_congelado" time="2.310" /><testcase classname="tests.test_printing_api" name="test_copia_de_factura_y_reglas" time="2.817" /><testcase classname="tests.test_printing_api" name="test_permisos_de_impresion" time="2.158"><failure message="TypeError: TestClient.delete() got an unexpected keyword argument 'json'">db = &lt;sqlalchemy.engine.base.Connection object at 0x000001EA6D2775C0&gt;
+client = &lt;starlette.testclient.TestClient object at 0x000001EA6D7867A0&gt;
+
+    def test_permisos_de_impresion(db, client):
+        boss = _headers(db, client, username="jefe")
+        waiter = _headers(db, client, perms=WAITER_PERMS, username="camarero")
+        printer = _mk_printer(client, boss, name="Tickets")
+    
+        # Sin admin.printers no se ve ni se mueve la cola ni se administran impresoras.
+        for method, url in (
+            ("get", PRINTERS), ("post", PRINTERS),
+            ("get", f"{PRINT}/jobs"), ("post", f"{PRINT}/dispatch"),
+            ("post", f"{PRINTERS}/{printer['id']}/test"),
+            ("patch", f"{PRINTERS}/{printer['id']}"), ("delete", f"{PRINTERS}/{printer['id']}"),
+        ):
+            kwargs = {"headers": waiter}
+            if method != "get":  # TestClient.get() no admite cuerpo
+                kwargs["json"] = {}
+&gt;           resp = getattr(client, method)(url, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: TestClient.delete() got an unexpected keyword argument 'json'
+
+tests\test_printing_api.py:636: TypeError</failure></testcase><testcase classname="tests.test_payments_api" name="test_formas_de_pago_configurables" time="2.010"><failure message="KeyError: 'items'">db = &lt;sqlalchemy.engine.base.Connection object at 0x000001EA6D6C1B80&gt;
+client = &lt;starlette.testclient.TestClient object at 0x000001EA6D5EA140&gt;
+
+    def test_formas_de_pago_configurables(db, client):
+        h = _sales_headers(db, client, perms=("products.view", "admin.parameters"),
+                           username="gestor")
+        seller = _sales_headers(db, client, perms=("sales.sell",), username="vendedor")
+    
+        created = client.post(f"{ADMIN}/payment-methods", headers=h, json={
+            "code": "VOUCHER", "name": "Vale de comida", "kind": "voucher",
+            "opens_drawer": False, "sort_order": 5,
+        })
+        assert created.status_code == 201, created.text
+        method = created.json()
+        assert (method["code"], method["name"], method["kind"]) == ("VOUCHER", "Vale de comida", "voucher")
+        assert (method["opens_drawer"], method["sort_order"], method["active"]) == (False, 5, True)
+    
+        # Código duplicado → 409.
+        dup = client.post(f"{ADMIN}/payment-methods", headers=h, json={
+            "code": "VOUCHER", "name": "Otro vale", "kind": "voucher"})
+        assert dup.status_code == 409 and dup.json()["code"] == "CONFLICT"
+    
+        patched = client.patch(f"{ADMIN}/payment-methods/{method['id']}", headers=h,
+                               json={"name": "Vale restaurante", "opens_drawer": True})
+        assert patched.status_code == 200
+        assert patched.json()["name"] == "Vale restaurante"
+        assert (patched.json()["code"], patched.json()["opens_drawer"]) == ("VOUCHER", True)
+    
+        # Lectura: es operación de venta (sales.sell), sin admin.parameters.
+        listed = client.get(f"{ADMIN}/payment-methods", headers=seller)
+        assert listed.status_code == 200
+        assert [m["code"] for m in listed.json()["items"]] == ["VOUCHER"]
+    
+        # Baja lógica: fuera del listado activo, visible con include_inactive.
+        assert client.delete(f"{ADMIN}/payment-methods/{method['id']}", headers=h).status_code == 204
+&gt;       assert client.get(f"{ADMIN}/payment-methods", headers=h).json()["items"] == []
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'items'
+
+tests\test_payments_api.py:230: KeyError</failure></testcase><testcase classname="tests.test_payments_api" name="test_pago_exacto" time="1.806" /><testcase classname="tests.test_payments_api" name="test_pago_superior_devuelve_cambio" time="1.790"><failure message="AssertionError: assert '0.10' == '10.00'&#10;  &#10;  - 10.00&#10;  + 0.10">db = &lt;sqlalchemy.engine.base.Connection object at 0x000001EA6D909400&gt;
+client = &lt;starlette.testclient.TestClient object at 0x000001EA6D787BD0&gt;
+
+    def test_pago_superior_devuelve_cambio(db, client):
+        h = _sales_headers(db, client)
+        _, cash, cash_method, order, _ = _escenario(db, client, h)
+    
+        closed = _close(client, h, order["id"], cash, [_pay(cash_method, "3.00", "10.00")])
+        assert closed["total_amount"] == "3.00"   # el total no se infla con lo entregado
+        assert closed["change_total"] == "7.00"
+        [payment] = closed["payments"]
+        assert payment["amount"] == "3.00"
+    
+        payload = db.execute(text("SELECT payload FROM sale_events")).scalar_one()
+        assert payload["change_total"] == "7.00"
+&gt;       assert payload["payments"][0]["tendered"] == "10.00"
+E       AssertionError: assert '0.10' == '10.00'
+E         
+E         - 10.00
+E         + 0.10
+
+tests\test_payments_api.py:286: AssertionError</failure></testcase><testcase classname="tests.test_payments_api" name="test_pago_parcial_rechazado_y_sin_efectos" time="1.774" /><testcase classname="tests.test_payments_api" name="test_pago_mixto" time="1.748" /><testcase classname="tests.test_payments_api" name="test_exceso_sin_efectivo_rechazado" time="1.701" /><testcase classname="tests.test_payments_api" name="test_entregado_invalido_rechazado" time="1.863" /><testcase classname="tests.test_payments_api" name="test_forma_de_pago_desconocida_o_inactiva" time="1.890" /><testcase classname="tests.test_payments_api" name="test_pago_duplicado_rechazado" time="1.937" /><testcase classname="tests.test_payments_api" name="test_pago_concurrente_un_solo_ganador" time="1.909" /><testcase classname="tests.test_payments_api" name="test_devolucion_con_pagos" time="2.166"><failure message="AssertionError: assert ['2.00', '1.00'] == ['1.00', '2.00']&#10;  &#10;  At index 0 diff: '2.00' != '1.00'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x000001EA683ED310&gt;
+client = &lt;starlette.testclient.TestClient object at 0x000001EA6DC7F680&gt;
+
+    def test_devolucion_con_pagos(db, client):
+        h = _sales_headers(db, client)
+        _, cash, cash_method, order, line = _escenario(db, client, h)
+        card_method = _mk_payment_method(db, code="CARD", name="Tarjeta", kind="card")
+        _close(client, h, order["id"], cash,
+               [_pay(cash_method, "1.00", "2.00"), _pay(card_method, "2.00")])
+    
+        refund = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "Cambio de opinión",
+            "lines": [{"line_id": line["id"], "quantity": "2"}],
+            "payments": [_pay(cash_method, "1.00"), _pay(card_method, "2.00")],
+        })
+        assert refund.status_code == 201, refund.text
+        assert refund.json()["total_amount"] == "-3.00"
+    
+        # Lo devuelto queda como pagos positivos en la orden negativa.
+        returned = db.execute(
+            text(
+                "SELECT p.amount FROM payments p JOIN orders o ON o.id = p.order_id "
+                "WHERE o.total_amount &lt; 0 ORDER BY p.id"
+            )
+        ).scalars().all()
+&gt;       assert [format(a, "f") for a in returned] == ["1.00", "2.00"]
+E       AssertionError: assert ['2.00', '1.00'] == ['1.00', '2.00']
+E         
+E         At index 0 diff: '2.00' != '1.00'
+E         Use -v to get more diff
+
+tests\test_payments_api.py:476: AssertionError</failure></testcase><testcase classname="tests.test_payments_api" name="test_devolucion_rechaza_desajuste_y_entregado" time="2.166" /><testcase classname="tests.test_payments_api" name="test_permisos_de_cobro" time="1.754" /></testsuite></testsuites>

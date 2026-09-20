@@ -1,0 +1,155 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_______________________________ test_devolucion _______________________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x0000029B21A53E10>
+client = <starlette.testclient.TestClient object at 0x0000029B1FF25160>
+
+    def test_devolucion(db, client):
+        h = _sales_headers(db, client)
+        user_id = db.execute(text("SELECT id FROM users WHERE username = 'jefe'")).scalar_one()
+        terminal = _mk_terminal(db)
+        cash = _mk_cash_session(db, terminal, str(user_id))
+        cash_method = _mk_payment_method(db)
+        _, cafe = _tax_and_product(client, h)
+    
+        order = _mk_order(client, h, terminal)
+        line = _add_line(client, h, order["id"], {"product_id": cafe["id"], "quantity": "2"})
+        _close(client, h, order["id"], cash, [_pay(cash_method, "3.00")])
+    
+        # M\xe1s de lo vendido \u2192 422.
+        over = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "Producto en mal estado",
+            "lines": [{"line_id": line["id"], "quantity": "3"}],
+            "payments": [_pay(cash_method, "1.50")],
+        })
+        assert over.status_code == 422 and over.json()["code"] == "VALIDATION_ERROR"
+    
+        # L\xednea ajena \u2192 422.
+        alien = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "x",
+            "lines": [{"line_id": str(uuid4()), "quantity": "1"}],
+            "payments": [_pay(cash_method, "1.50")],
+        })
+        assert alien.status_code == 422
+    
+        # Devolución parcial: 1 de las 2 unidades.
+        refund = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "Producto en mal estado",
+            "lines": [{"line_id": line["id"], "quantity": "1"}],
+            "payments": [_pay(cash_method, "1.50")],
+        })
+        assert refund.status_code == 201, refund.text
+        body = refund.json()
+        assert body["status"] == "paid" and body["dining_table_id"] is None
+        assert body["total_amount"] == "-1.50"  # orden negativa exacta
+        assert body["total_base"] == "-1.24" and body["total_tax"] == "-0.26"
+    
+        # El dinero devuelto: pago positivo en la orden negativa (fase 07).
+        amounts = db.execute(
+            text("SELECT o.status, p.amount FROM payments p JOIN orders o ON o.id = p.order_id")
+        ).all()
+        assert sorted((r[0], format(r[1], "f")) for r in amounts) == [
+            ("paid", "1.50"), ("paid", "3.00"),
+        ]
+    
+        row = db.execute(
+            text("SELECT original_order_id, refund_order_id, amount, reason FROM refunds")
+        ).one()
+        assert str(row[0]) == order["id"] and str(row[1]) == body["id"]
+        assert format(row[2], "f") == "1.50" and row[3] == "Producto en mal estado"
+    
+        # Segunda devoluci\xf3n de la misma venta \u2192 409 (UNIQUE en refunds).
+        second = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "Reintento",
+            "lines": [{"line_id": line["id"], "quantity": "1"}],
+            "payments": [_pay(cash_method, "1.50")],
+        })
+        assert second.status_code == 409 and second.json()["code"] == "CONFLICT"
+    
+        # Devoluci\xf3n de un borrador y de una anulada \u2192 409.
+        draft = _mk_order(client, h, terminal)
+        assert client.post(f"{SALES}/orders/{draft['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "x",
+            "lines": [{"line_id": line["id"], "quantity": "1"}],
+            "payments": [_pay(cash_method, "1.50")],
+        }).status_code == 409
+    
+        types = [t for t, _ in _sale_events(db)]
+>       assert types == ["sale_closed", "refund_issued"]
+E       AssertionError: assert ['refund_issu...'sale_closed'] == ['sale_closed...efund_issued']
+E         
+E         At index 0 diff: 'refund_issued' != 'sale_closed'
+E         Use -v to get more diff
+
+tests\test_sales_api.py:467: AssertionError
+---------------------------- Captured stdout setup ----------------------------
+{"event": "setup plugin alembic.autogenerate.schemas", "level": "info", "timestamp": "2026-09-13T16:54:12.107007Z"}
+{"event": "setup plugin alembic.autogenerate.tables", "level": "info", "timestamp": "2026-09-13T16:54:12.107424Z"}
+{"event": "setup plugin alembic.autogenerate.types", "level": "info", "timestamp": "2026-09-13T16:54:12.107623Z"}
+{"event": "setup plugin alembic.autogenerate.constraints", "level": "info", "timestamp": "2026-09-13T16:54:12.107785Z"}
+{"event": "setup plugin alembic.autogenerate.defaults", "level": "info", "timestamp": "2026-09-13T16:54:12.107941Z"}
+{"event": "setup plugin alembic.autogenerate.comments", "level": "info", "timestamp": "2026-09-13T16:54:12.108096Z"}
+{"event": "setup plugin alembic.ext.checkconstraint_byname", "level": "info", "timestamp": "2026-09-13T16:54:12.108612Z"}
+---------------------------- Captured stderr setup ----------------------------
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+----------------------------- Captured log setup ------------------------------
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.autogenerate.schemas
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.autogenerate.tables
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.autogenerate.types
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.autogenerate.constraints
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.autogenerate.defaults
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.autogenerate.comments
+INFO     alembic.runtime.plugins:plugins.py:37 setup plugin alembic.ext.checkconstraint_byname
+___________ test_la_devolucion_emite_ticket_negativo_con_referencia ___________
+
+db = <sqlalchemy.engine.base.Connection object at 0x0000029B21B6E210>
+client = <starlette.testclient.TestClient object at 0x0000029B21C74910>
+
+    def test_la_devolucion_emite_ticket_negativo_con_referencia(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+    
+        order, line, closed = _sale(client, h, db, terminal, method)
+        assert closed["ticket"]["doc_number"] == "A-000001"
+    
+        refund = _refund(client, h, order["id"], _cash_session_id(client, h, terminal),
+                         line, method, "1.50")
+        ticket = _ticket_of(db, refund["id"])
+        payload = ticket["payload"]
+        assert payload["kind"] == "ticket"
+        assert payload["doc_number"] == "A-000002"  # misma secuencia del terminal
+        assert payload["order"]["type"] == "refund"
+        assert payload["order"]["original_order_id"] == order["id"]
+        assert payload["order"]["original_doc_number"] == "A-000001"
+        assert Decimal(payload["totals"]["total"]) == Decimal("-1.50")
+>       assert payload["lines"][0]["quantity"] == "-1"
+E       AssertionError: assert '-1.000' == '-1'
+E         
+E         - -1
+E         + -1.000
+
+tests\test_documents_api.py:379: AssertionError
+============================== warnings summary ===============================
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.WindowsSelectorEventLoopPolicy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.set_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv\Lib\site-packages\starlette\testclient.py:53
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_sales_api.py::test_devolucion - AssertionError: assert ['re...
+FAILED tests/test_documents_api.py::test_la_devolucion_emite_ticket_negativo_con_referencia

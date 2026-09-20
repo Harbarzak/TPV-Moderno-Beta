@@ -1,0 +1,94 @@
+# =============================================================================
+# TPV Moderno — despliegue de producción con Docker (fase Despliegue).
+#
+#   db     PostgreSQL 16 — SOLO red interna, sin puertos publicados.
+#   api    FastAPI + los tres frontends servidos por el propio proceso (§1.4).
+#   proxy  Caddy — HTTP en LAN (MODO A) o HTTPS con CA interna (MODO B).
+#
+# Primer arranque:
+#   cp .env.example .env   # y genera los dos secretos (README-DESPLIEGUE.md)
+#   docker compose up -d --build
+#
+# Los secretos viven SOLO en .env, que está fuera del repositorio (ADR-008).
+# =============================================================================
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tpv
+      POSTGRES_USER: tpv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta_POSTGRES_PASSWORD_en_.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tpv -d tpv"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    logging: *logging
+    # Deliberadamente SIN `ports`: la base de datos no es alcanzable desde
+    # fuera de la red interna del compose (solo pg_dump/restore la tocan).
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TPV_ENV: ${TPV_ENV:-prod}
+      TPV_LOG_LEVEL: ${TPV_LOG_LEVEL:-INFO}
+      TPV_DATABASE_URL: postgresql+psycopg://tpv:${POSTGRES_PASSWORD}@db:5432/tpv
+      TPV_JWT_SECRET: ${TPV_JWT_SECRET:?falta_TPV_JWT_SECRET_en_.env}
+      TPV_DATA_DIR: /data
+      TPV_BACKUP_DIR: /backups
+      TPV_SERVE_FRONTEND_DIR: /srv/frontends/tpv
+      TPV_SERVE_MOBILE_DIR: /srv/frontends/movil
+      TPV_SERVE_ADMIN_DIR: /srv/frontends/admin
+    volumes:
+      - tpv_data:/data
+      - backups:/backups
+    healthcheck:
+      # Liveness contra /healthz (no toca la BD); el estado real de la BD lo
+      # publica /readyz. La imagen slim no lleva curl: se usa urllib.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      # Lo usa el bloque MODO B del Caddyfile ({$TPV_DOMAIN}).
+      TPV_DOMAIN: ${TPV_DOMAIN:-}
+    ports:
+      - "${TPV_HTTP_PORT:-80}:80"
+      - "${TPV_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: *logging
+
+volumes:
+  pgdata:
+  tpv_data:
+  backups:
+  caddy_data:
+  caddy_config:

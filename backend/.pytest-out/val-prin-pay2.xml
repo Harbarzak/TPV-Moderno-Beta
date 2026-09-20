@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="22" time="49.473" timestamp="2026-09-13T19:38:34.613662+02:00" hostname="DESKTZEN"><testcase classname="tests.test_printing_api" name="test_crud_de_impresoras_red_y_agente" time="3.507" /><testcase classname="tests.test_printing_api" name="test_job_de_prueba_y_ciclo_de_cola" time="1.741" /><testcase classname="tests.test_printing_api" name="test_reintentos_controlados_con_backoff" time="2.391" /><testcase classname="tests.test_printing_api" name="test_cancelacion_de_jobs" time="2.523" /><testcase classname="tests.test_printing_api" name="test_el_cobro_encola_el_ticket_con_dedupe" time="2.390" /><testcase classname="tests.test_printing_api" name="test_sin_impresora_configurada_el_cobro_no_rompe" time="2.006" /><testcase classname="tests.test_printing_api" name="test_copia_de_ticket_reenvia_el_payload_congelado" time="2.394" /><testcase classname="tests.test_printing_api" name="test_copia_de_factura_y_reglas" time="2.724" /><testcase classname="tests.test_printing_api" name="test_permisos_de_impresion" time="3.203"><failure message="assert 201 == 409&#10; +  where 201 = &lt;Response [201 Created]&gt;.status_code">db = &lt;sqlalchemy.engine.base.Connection object at 0x0000025BFBD6D310&gt;
+client = &lt;starlette.testclient.TestClient object at 0x0000025B813645A0&gt;
+
+    def test_permisos_de_impresion(db, client):
+        boss = _headers(db, client, username="jefe")
+        waiter = _headers(db, client, perms=WAITER_PERMS, username="camarero")
+        printer = _mk_printer(client, boss, name="Tickets")
+    
+        # Sin admin.printers no se ve ni se mueve la cola ni se administran impresoras.
+        for method, url in (
+            ("get", PRINTERS), ("post", PRINTERS),
+            ("get", f"{PRINT}/jobs"), ("post", f"{PRINT}/dispatch"),
+            ("post", f"{PRINTERS}/{printer['id']}/test"),
+            ("patch", f"{PRINTERS}/{printer['id']}"), ("delete", f"{PRINTERS}/{printer['id']}"),
+        ):
+            kwargs = {"headers": waiter}
+            if method in ("post", "put", "patch"):  # get/delete no admiten cuerpo
+                kwargs["json"] = {}
+            resp = getattr(client, method)(url, **kwargs)
+            assert resp.status_code == 403, f"{method} {url}: {resp.text}"
+    
+        # Con admin.printers sí.
+        assert client.get(PRINTERS, headers=boss).status_code == 200
+    
+        # Copia de ticket para quien reimprime; copia de factura exige invoices.issue.
+        terminal = _mk_terminal(db)
+        method_id = _mk_payment_method(db)
+        order, _, closed = _sale(client, waiter, db, terminal, method_id)
+        # El camarero SÍ tiene tickets.reprint: sin impresora configurada la copia
+        # muere en la regla de negocio (409), no en el permiso.
+        resp = client.post(f"{PRINT}/copies/tickets/{closed['ticket']['id']}", headers=waiter)
+&gt;       assert resp.status_code == 409
+E       assert 201 == 409
+E        +  where 201 = &lt;Response [201 Created]&gt;.status_code
+
+tests\test_printing_api.py:649: AssertionError</failure></testcase><testcase classname="tests.test_payments_api" name="test_formas_de_pago_configurables" time="2.344" /><testcase classname="tests.test_payments_api" name="test_pago_exacto" time="1.815" /><testcase classname="tests.test_payments_api" name="test_pago_superior_devuelve_cambio" time="1.838" /><testcase classname="tests.test_payments_api" name="test_pago_parcial_rechazado_y_sin_efectos" time="1.759" /><testcase classname="tests.test_payments_api" name="test_pago_mixto" time="1.794" /><testcase classname="tests.test_payments_api" name="test_exceso_sin_efectivo_rechazado" time="1.752" /><testcase classname="tests.test_payments_api" name="test_entregado_invalido_rechazado" time="1.828" /><testcase classname="tests.test_payments_api" name="test_forma_de_pago_desconocida_o_inactiva" time="1.781" /><testcase classname="tests.test_payments_api" name="test_pago_duplicado_rechazado" time="1.887" /><testcase classname="tests.test_payments_api" name="test_pago_concurrente_un_solo_ganador" time="1.916" /><testcase classname="tests.test_payments_api" name="test_devolucion_con_pagos" time="2.008" /><testcase classname="tests.test_payments_api" name="test_devolucion_rechaza_desajuste_y_entregado" time="2.263" /><testcase classname="tests.test_payments_api" name="test_permisos_de_cobro" time="1.785" /></testsuite></testsuites>

@@ -1,0 +1,150 @@
+........FF.F.......F..                                                   [100%]
+================================== FAILURES ===================================
+_________________________ test_permisos_de_impresion __________________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x000001EA6D2775C0>
+client = <starlette.testclient.TestClient object at 0x000001EA6D7867A0>
+
+    def test_permisos_de_impresion(db, client):
+        boss = _headers(db, client, username="jefe")
+        waiter = _headers(db, client, perms=WAITER_PERMS, username="camarero")
+        printer = _mk_printer(client, boss, name="Tickets")
+    
+        # Sin admin.printers no se ve ni se mueve la cola ni se administran impresoras.
+        for method, url in (
+            ("get", PRINTERS), ("post", PRINTERS),
+            ("get", f"{PRINT}/jobs"), ("post", f"{PRINT}/dispatch"),
+            ("post", f"{PRINTERS}/{printer['id']}/test"),
+            ("patch", f"{PRINTERS}/{printer['id']}"), ("delete", f"{PRINTERS}/{printer['id']}"),
+        ):
+            kwargs = {"headers": waiter}
+            if method != "get":  # TestClient.get() no admite cuerpo
+                kwargs["json"] = {}
+>           resp = getattr(client, method)(url, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: TestClient.delete() got an unexpected keyword argument 'json'
+
+tests\test_printing_api.py:636: TypeError
+______________________ test_formas_de_pago_configurables ______________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x000001EA6D6C1B80>
+client = <starlette.testclient.TestClient object at 0x000001EA6D5EA140>
+
+    def test_formas_de_pago_configurables(db, client):
+        h = _sales_headers(db, client, perms=("products.view", "admin.parameters"),
+                           username="gestor")
+        seller = _sales_headers(db, client, perms=("sales.sell",), username="vendedor")
+    
+        created = client.post(f"{ADMIN}/payment-methods", headers=h, json={
+            "code": "VOUCHER", "name": "Vale de comida", "kind": "voucher",
+            "opens_drawer": False, "sort_order": 5,
+        })
+        assert created.status_code == 201, created.text
+        method = created.json()
+        assert (method["code"], method["name"], method["kind"]) == ("VOUCHER", "Vale de comida", "voucher")
+        assert (method["opens_drawer"], method["sort_order"], method["active"]) == (False, 5, True)
+    
+        # C\xf3digo duplicado \u2192 409.
+        dup = client.post(f"{ADMIN}/payment-methods", headers=h, json={
+            "code": "VOUCHER", "name": "Otro vale", "kind": "voucher"})
+        assert dup.status_code == 409 and dup.json()["code"] == "CONFLICT"
+    
+        patched = client.patch(f"{ADMIN}/payment-methods/{method['id']}", headers=h,
+                               json={"name": "Vale restaurante", "opens_drawer": True})
+        assert patched.status_code == 200
+        assert patched.json()["name"] == "Vale restaurante"
+        assert (patched.json()["code"], patched.json()["opens_drawer"]) == ("VOUCHER", True)
+    
+        # Lectura: es operación de venta (sales.sell), sin admin.parameters.
+        listed = client.get(f"{ADMIN}/payment-methods", headers=seller)
+        assert listed.status_code == 200
+        assert [m["code"] for m in listed.json()["items"]] == ["VOUCHER"]
+    
+        # Baja lógica: fuera del listado activo, visible con include_inactive.
+        assert client.delete(f"{ADMIN}/payment-methods/{method['id']}", headers=h).status_code == 204
+>       assert client.get(f"{ADMIN}/payment-methods", headers=h).json()["items"] == []
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'items'
+
+tests\test_payments_api.py:230: KeyError
+_____________________ test_pago_superior_devuelve_cambio ______________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x000001EA6D909400>
+client = <starlette.testclient.TestClient object at 0x000001EA6D787BD0>
+
+    def test_pago_superior_devuelve_cambio(db, client):
+        h = _sales_headers(db, client)
+        _, cash, cash_method, order, _ = _escenario(db, client, h)
+    
+        closed = _close(client, h, order["id"], cash, [_pay(cash_method, "3.00", "10.00")])
+        assert closed["total_amount"] == "3.00"   # el total no se infla con lo entregado
+        assert closed["change_total"] == "7.00"
+        [payment] = closed["payments"]
+        assert payment["amount"] == "3.00"
+    
+        payload = db.execute(text("SELECT payload FROM sale_events")).scalar_one()
+        assert payload["change_total"] == "7.00"
+>       assert payload["payments"][0]["tendered"] == "10.00"
+E       AssertionError: assert '0.10' == '10.00'
+E         
+E         - 10.00
+E         + 0.10
+
+tests\test_payments_api.py:286: AssertionError
+__________________________ test_devolucion_con_pagos __________________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x000001EA683ED310>
+client = <starlette.testclient.TestClient object at 0x000001EA6DC7F680>
+
+    def test_devolucion_con_pagos(db, client):
+        h = _sales_headers(db, client)
+        _, cash, cash_method, order, line = _escenario(db, client, h)
+        card_method = _mk_payment_method(db, code="CARD", name="Tarjeta", kind="card")
+        _close(client, h, order["id"], cash,
+               [_pay(cash_method, "1.00", "2.00"), _pay(card_method, "2.00")])
+    
+        refund = client.post(f"{SALES}/orders/{order['id']}/refund", headers=h, json={
+            "cash_session_id": cash, "reason": "Cambio de opinión",
+            "lines": [{"line_id": line["id"], "quantity": "2"}],
+            "payments": [_pay(cash_method, "1.00"), _pay(card_method, "2.00")],
+        })
+        assert refund.status_code == 201, refund.text
+        assert refund.json()["total_amount"] == "-3.00"
+    
+        # Lo devuelto queda como pagos positivos en la orden negativa.
+        returned = db.execute(
+            text(
+                "SELECT p.amount FROM payments p JOIN orders o ON o.id = p.order_id "
+                "WHERE o.total_amount < 0 ORDER BY p.id"
+            )
+        ).scalars().all()
+>       assert [format(a, "f") for a in returned] == ["1.00", "2.00"]
+E       AssertionError: assert ['2.00', '1.00'] == ['1.00', '2.00']
+E         
+E         At index 0 diff: '2.00' != '1.00'
+E         Use -v to get more diff
+
+tests\test_payments_api.py:476: AssertionError
+============================== warnings summary ===============================
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.WindowsSelectorEventLoopPolicy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.set_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv\Lib\site-packages\starlette\testclient.py:53
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_printing_api.py::test_permisos_de_impresion - TypeError: Te...
+FAILED tests/test_payments_api.py::test_formas_de_pago_configurables - KeyErr...
+FAILED tests/test_payments_api.py::test_pago_superior_devuelve_cambio - Asser...
+FAILED tests/test_payments_api.py::test_devolucion_con_pagos - AssertionError...

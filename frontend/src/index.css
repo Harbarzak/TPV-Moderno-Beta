@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TPV táctil: nada de selección accidental ni zoom por doble toque. */
+@layer base {
+  button {
+    @apply select-none touch-manipulation;
+  }
+
+  /* Foco visible SIEMPRE (design-system.md §8), también en táctil con teclado. */
+  button:focus-visible,
+  input:focus-visible,
+  [role='button']:focus-visible {
+    outline: 2px solid theme('colors.accent-hover');
+    outline-offset: 2px;
+  }
+}

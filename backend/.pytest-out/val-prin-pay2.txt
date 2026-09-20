@@ -1,0 +1,60 @@
+........F.............                                                   [100%]
+================================== FAILURES ===================================
+_________________________ test_permisos_de_impresion __________________________
+
+db = <sqlalchemy.engine.base.Connection object at 0x0000025BFBD6D310>
+client = <starlette.testclient.TestClient object at 0x0000025B813645A0>
+
+    def test_permisos_de_impresion(db, client):
+        boss = _headers(db, client, username="jefe")
+        waiter = _headers(db, client, perms=WAITER_PERMS, username="camarero")
+        printer = _mk_printer(client, boss, name="Tickets")
+    
+        # Sin admin.printers no se ve ni se mueve la cola ni se administran impresoras.
+        for method, url in (
+            ("get", PRINTERS), ("post", PRINTERS),
+            ("get", f"{PRINT}/jobs"), ("post", f"{PRINT}/dispatch"),
+            ("post", f"{PRINTERS}/{printer['id']}/test"),
+            ("patch", f"{PRINTERS}/{printer['id']}"), ("delete", f"{PRINTERS}/{printer['id']}"),
+        ):
+            kwargs = {"headers": waiter}
+            if method in ("post", "put", "patch"):  # get/delete no admiten cuerpo
+                kwargs["json"] = {}
+            resp = getattr(client, method)(url, **kwargs)
+            assert resp.status_code == 403, f"{method} {url}: {resp.text}"
+    
+        # Con admin.printers sí.
+        assert client.get(PRINTERS, headers=boss).status_code == 200
+    
+        # Copia de ticket para quien reimprime; copia de factura exige invoices.issue.
+        terminal = _mk_terminal(db)
+        method_id = _mk_payment_method(db)
+        order, _, closed = _sale(client, waiter, db, terminal, method_id)
+        # El camarero SÍ tiene tickets.reprint: sin impresora configurada la copia
+        # muere en la regla de negocio (409), no en el permiso.
+        resp = client.post(f"{PRINT}/copies/tickets/{closed['ticket']['id']}", headers=waiter)
+>       assert resp.status_code == 409
+E       assert 201 == 409
+E        +  where 201 = <Response [201 Created]>.status_code
+
+tests\test_printing_api.py:649: AssertionError
+============================== warnings summary ===============================
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.WindowsSelectorEventLoopPolicy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+tests\conftest.py:24
+  E:\Proyectos\TPV\estructura_data\backend\tests\conftest.py:24: DeprecationWarning: 'asyncio.set_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+.venv\Lib\site-packages\starlette\testclient.py:53
+  E:\Proyectos\TPV\estructura_data\backend\.venv\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_printing_api.py::test_permisos_de_impresion - assert 201 ==...

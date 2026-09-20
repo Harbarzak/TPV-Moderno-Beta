@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cocina: tema oscuro (pantallas brillantes, luz de campana) y tipografía
+   grande — se lee a dos metros, con las manos ocupadas. Los tiempos van en
+   tabular-nums para que no «baille» el reloj al refrescar. */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+    overscroll-behavior: none;
+  }
+
+  button {
+    @apply select-none;
+  }
+}
+
+@layer components {
+  .btn-touch {
+    @apply flex min-h-[44px] items-center justify-center rounded-lg px-3 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-40;
+  }
+
+  .card-kitchen {
+    @apply flex flex-col gap-2 rounded-xl border bg-slate-900 p-3 shadow;
+  }
+
+  .chip {
+    @apply rounded-full px-3 py-1.5 text-sm font-medium transition;
+  }
+
+  .line-status {
+    @apply rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide;
+  }
+}

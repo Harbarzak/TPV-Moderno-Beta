@@ -1,0 +1,38 @@
+# =============================================================================
+# TPV Moderno — reverse proxy (Caddy), fase Despliegue.
+#
+# MODO A (activo por defecto): HTTP plano en el puerto 80. Suficiente en una
+# LAN de confianza y no requiere certificados. Los terminales usan
+# http://IP-DEL-SERVIDOR/app/tpv/ (mostrador), /app/movil/ y /app/admin/.
+#
+# MODO B (producción recomendada): HTTPS con la CA interna de Caddy. Con TLS,
+# los WebSocket pasan a wss:// automáticamente y el navegador permite las
+# funciones que exigen contexto seguro (service worker, cámara…).
+#   1. En .env: TPV_DOMAIN=tpv.cafeteria.local   (nombre que resuelvan los
+#      terminales: DNS del router o entrada en /etc/hosts de cada uno)
+#   2. Comenta el bloque «:80» de abajo y descomenta el bloque del dominio.
+#   3. docker compose up -d --force-recreate proxy
+#   4. En cada terminal, confía el certificado raíz de la CA interna:
+#        docker compose exec proxy cat /data/caddy/pki/authorities/local/root.crt > caddy-root.crt
+#      e instálalo en el almacén «Entidades de certificación raíz de confianza»
+#      del navegador/SO. Sin esto el navegador mostrará un aviso de seguridad.
+#
+# Dominio PÚBLICO con certificado válido (Let's Encrypt): sustituye el bloque
+# MODO B por «tpv.tudominio.com { tls tu@correo.com; reverse_proxy api:8000 }».
+# =============================================================================
+
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	encode gzip
+	reverse_proxy api:8000
+}
+
+# {$TPV_DOMAIN} {
+# 	encode gzip
+# 	tls internal
+# 	reverse_proxy api:8000
+# }

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="14" time="39.628" timestamp="2026-09-13T19:28:48.164673+02:00" hostname="DESKTZEN"><testcase classname="tests.test_documents_api" name="test_el_cobro_emite_ticket_automatico" time="3.941" /><testcase classname="tests.test_documents_api" name="test_cierre_concurrente_emite_numeros_distintos" time="2.443" /><testcase classname="tests.test_documents_api" name="test_la_devolucion_emite_ticket_negativo_con_referencia" time="2.045" /><testcase classname="tests.test_documents_api" name="test_factura_de_dos_ventas_del_mismo_cliente" time="2.745"><failure message="AssertionError: assert set() == {'0a3d1f71-47...4c676b1211bf'}&#10;  &#10;  Extra items in the right set:&#10;  '41fb5962-d3c8-421d-a994-4c676b1211bf'&#10;  '0a3d1f71-47fb-4feb-a8bc-e6897c1192c6'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x000001B509127B60&gt;
+client = &lt;starlette.testclient.TestClient object at 0x000001B509181C70&gt;
+
+    def test_factura_de_dos_ventas_del_mismo_cliente(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        customer = _mk_customer(db, tax_id="B12345678", name="Cliente SL")
+    
+        order1, _, closed1 = _sale(client, h, db, terminal, method, customer_id=customer)
+        order2, _, _ = _sale(client, h, db, terminal, method, customer_id=customer)
+    
+        resp = client.post(f"{DOCS}/invoices", headers=h,
+                           json={"order_ids": [order1["id"], order2["id"]]})
+        assert resp.status_code == 201, resp.text
+        invoice = resp.json()
+        assert invoice["series"] == "FAC" and invoice["year"] == YEAR and invoice["number"] == 1
+        assert invoice["doc_number"] == f"FAC {YEAR}/000001"
+        assert invoice["status"] == "issued"
+        assert invoice["customer_id"] == customer
+&gt;       assert {line["order_id"] for line in invoice["lines"]} == {order1["id"], order2["id"]}
+E       AssertionError: assert set() == {'0a3d1f71-47...4c676b1211bf'}
+E         
+E         Extra items in the right set:
+E         '41fb5962-d3c8-421d-a994-4c676b1211bf'
+E         '0a3d1f71-47fb-4feb-a8bc-e6897c1192c6'
+E         Use -v to get more diff
+
+tests\test_documents_api.py:405: AssertionError</failure></testcase><testcase classname="tests.test_documents_api" name="test_reglas_de_facturacion_rechazadas" time="3.979" /><testcase classname="tests.test_documents_api" name="test_no_se_facturan_devoluciones_ni_ventas_negativas" time="2.165" /><testcase classname="tests.test_documents_api" name="test_rectificativa_parcial_por_devolucion" time="2.320"><failure message="AssertionError: assert [] == ['a60036f5-78...d8d6c0036801']&#10;  &#10;  Right contains one more item: 'a60036f5-78e9-4b50-9d75-d8d6c0036801'&#10;  Use -v to get more diff">db = &lt;sqlalchemy.engine.base.Connection object at 0x000001B509199400&gt;
+client = &lt;starlette.testclient.TestClient object at 0x000001B5094DFF00&gt;
+
+    def test_rectificativa_parcial_por_devolucion(db, client):
+        h = _headers(db, client)
+        terminal = _mk_terminal(db)
+        method = _mk_payment_method(db)
+        customer = _mk_customer(db, tax_id="B12345678")
+    
+        order, line, closed, invoice = _invoiced_sale(db, client, h, terminal, method, customer)
+        refund = _refund(client, h, order["id"], _cash_session_id(client, h, terminal),
+                         line, method, "1.50")
+    
+        resp = client.post(f"{DOCS}/invoices/{invoice['id']}/rectifications", headers=h, json={
+            "mode": "partial", "refund_order_id": refund["id"], "reason": "Devolución parcial",
+        })
+        assert resp.status_code == 201, resp.text
+        rect = resp.json()
+        assert rect["series"] == "R" and rect["number"] == 1
+        assert rect["doc_number"] == f"R {YEAR}/000001"
+        assert rect["rectified_invoice_id"] == invoice["id"]
+        assert rect["status"] == "issued"
+        # Importes negativos: los de la devolución, no de la factura completa.
+        assert Decimal(rect["total_amount"]) == Decimal("-1.50")
+        assert Decimal(rect["total_base"]) + Decimal(rect["total_tax"]) == Decimal("-1.50")
+        # La parcial sí enlaza la orden de devolución (UNIQUE una rectificativa por venta).
+&gt;       assert [line["order_id"] for line in rect["lines"]] == [refund["id"]]
+E       AssertionError: assert [] == ['a60036f5-78...d8d6c0036801']
+E         
+E         Right contains one more item: 'a60036f5-78e9-4b50-9d75-d8d6c0036801'
+E         Use -v to get more diff
+
+tests\test_documents_api.py:521: AssertionError</failure></testcase><testcase classname="tests.test_documents_api" name="test_rectificativa_total_anula_el_importe_completo" time="2.159" /><testcase classname="tests.test_documents_api" name="test_reglas_de_rectificacion_rechazadas" time="3.393" /><testcase classname="tests.test_documents_api" name="test_anulacion_de_factura_con_motivo" time="2.269" /><testcase classname="tests.test_documents_api" name="test_reimpresion_de_ticket_incrementa_el_contador" time="2.191" /><testcase classname="tests.test_documents_api" name="test_configuracion_de_negocio_y_logo_con_snapshot" time="3.524" /><testcase classname="tests.test_documents_api" name="test_validaciones_del_logo" time="1.568" /><testcase classname="tests.test_documents_api" name="test_permisos_de_documentos" time="3.154" /></testsuite></testsuites>
