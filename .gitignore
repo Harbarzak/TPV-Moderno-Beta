@@ -23,3 +23,7 @@ htmlcov/
 node_modules/
 dist/
 *.local
+
+ARCHITECTURE.md
+PROJECT_STATE.md
+memory.md
